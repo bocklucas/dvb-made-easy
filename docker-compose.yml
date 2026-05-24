@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - config:/app/config
+      - staging:/staging
+    group_add:
+      - "${DOCKER_GID:-982}"
+    security_opt:
+      - label:disable
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+
+volumes:
+  config:
+  staging:
+    name: offen-restore-staging

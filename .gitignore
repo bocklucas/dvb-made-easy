@@ -1,0 +1,23 @@
+# Go binary
+server
+
+# Docker mount
+/app/
+
+# Environment
+.env
+
+# Documentation (generated)
+docs/
+
+# Dependencies
+node_modules/
+
+# Air (Go hot reload)
+tmp/
+
+# SvelteKit
+.svelte-kit/
+web/build/
+
+TODO.md
