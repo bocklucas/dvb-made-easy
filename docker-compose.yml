@@ -1,10 +1,11 @@
 services:
-  backend:
+  app:
+    container_name: offen-made-easy
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "7331:7331"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - config:/app/config
@@ -13,13 +14,6 @@ services:
       - "${DOCKER_GID:-982}"
     security_opt:
       - label:disable
-
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "5173:5173"
 
 volumes:
   config:

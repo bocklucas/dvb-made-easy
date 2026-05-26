@@ -1,0 +1,20 @@
+services:
+  app:
+    container_name: offen-made-easy
+    image: ghcr.io/bocklucas/offen-made-easy:latest
+    ports:
+      - "7331:7331"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - config:/app/config
+      - staging:/staging
+    group_add:
+      - "${DOCKER_GID:-982}"
+    security_opt:
+      - label:disable
+    restart: unless-stopped
+
+volumes:
+  config:
+  staging:
+    name: offen-restore-staging

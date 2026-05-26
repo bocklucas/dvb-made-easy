@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { VolumeInfo, ProjectSource, InferenceResult } from '$lib/types';
+  import type { VolumeInfo, ProjectSource, InferenceResult, Credentials } from '$lib/types';
   import ImportMethodSelect from '$lib/components/ImportMethodSelect.svelte';
   import WizardStep1 from '$lib/components/WizardStep1.svelte';
   import WizardStep2 from '$lib/components/WizardStep2.svelte';
@@ -18,13 +18,14 @@
   let projectId = $state('');
   let projectName = $state('');
   let volumes = $state<VolumeInfo[]>([]);
-  let backendType = $state('local');
+  let backendType = $state<Credentials['type']>('local');
   let inferenceResult = $state<InferenceResult | undefined>(undefined);
 
   // Portainer sub-flow state
   let portainerUrl = $state('');
   let portainerApiKey = $state('');
   let portainerEndpointId = $state(0);
+  let portainerSavedSourceId = $state('');
 
   function handleMethodSelect(method: ProjectSource) {
     selectedMethod = method;
@@ -65,10 +66,11 @@
   }
 
   // Portainer sub-flow: step 1 = connect, step 2 = select stack, step 3 = storage, step 4 = review
-  function handlePortainerStep1Next(url: string, key: string, endpointId: number) {
+  function handlePortainerStep1Next(url: string, key: string, endpointId: number, savedSourceId?: string) {
     portainerUrl = url;
     portainerApiKey = key;
     portainerEndpointId = endpointId;
+    portainerSavedSourceId = savedSourceId || '';
     currentStep = 2;
   }
 
@@ -79,7 +81,7 @@
     currentStep = 3;
   }
 
-  function handleStep2Complete(type: 'local' | 'smb') {
+  function handleStep2Complete(type: Credentials['type']) {
     backendType = type;
     currentStep = selectedMethod === 'git' || selectedMethod === 'portainer' ? 4 : 3;
   }
@@ -115,9 +117,35 @@
   }
 </script>
 
-<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-start pt-12 px-4">
+<div class="min-h-screen bg-slate-950 flex flex-col items-center justify-start pt-12 px-4 animate-fade-in">
   <div class="w-full max-w-xl">
-    <h1 class="text-2xl font-bold text-gray-900 mb-2">Setup New Project</h1>
+    <h1 class="text-2xl font-light text-slate-100 mb-2">
+      Setup New Project
+      {#if projectName}
+        <span class="text-lg font-normal text-slate-500 block sm:inline sm:ml-2">for {projectName}</span>
+      {/if}
+    </h1>
+
+    {#if currentStep > 0 && (projectName || selectedMethod)}
+      <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 mb-6 text-xs flex flex-wrap gap-x-6 gap-y-2 text-slate-400">
+        <div class="flex items-center gap-1">
+          <span class="font-semibold text-slate-300">Source:</span>
+          <span class="capitalize px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-medium">{selectedMethod}</span>
+        </div>
+        {#if projectName}
+          <div><span class="font-semibold text-slate-300">Project Name:</span> <span class="text-slate-200 font-medium">{projectName}</span></div>
+        {/if}
+        {#if volumes && volumes.length > 0}
+          <div><span class="font-semibold text-slate-300">Volumes:</span> <span class="text-slate-200 font-medium">{volumes.length} detected</span></div>
+        {/if}
+        {#if currentStep >= 3 && backendType}
+          <div class="flex items-center gap-1">
+            <span class="font-semibold text-slate-300">Storage Backend:</span>
+            <span class="uppercase px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-300 font-mono font-medium">{backendType}</span>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     {#if currentStep > 0 && selectedMethod === 'paste'}
       <!-- Step indicator for the paste sub-flow (steps 1-3) -->
@@ -125,12 +153,12 @@
         {#each pasteSteps as step}
           <div class="flex items-center gap-2">
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium {visualStep() >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-500 {visualStep() >= step ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-slate-800 text-slate-500'}"
             >
               {step}
             </div>
             {#if step < pasteSteps.length}
-              <div class="w-12 h-0.5 {visualStep() > step ? 'bg-blue-600' : 'bg-gray-200'}"></div>
+              <div class="w-12 h-0.5 transition-all duration-500 {visualStep() > step ? 'bg-indigo-500' : 'bg-slate-700'}"></div>
             {/if}
           </div>
         {/each}
@@ -141,12 +169,12 @@
         {#each gitSteps as step}
           <div class="flex items-center gap-2">
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium {currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-500 {currentStep >= step ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-slate-800 text-slate-500'}"
             >
               {step}
             </div>
             {#if step < gitSteps.length}
-              <div class="w-12 h-0.5 {currentStep > step ? 'bg-blue-600' : 'bg-gray-200'}"></div>
+              <div class="w-12 h-0.5 transition-all duration-500 {currentStep > step ? 'bg-indigo-500' : 'bg-slate-700'}"></div>
             {/if}
           </div>
         {/each}
@@ -157,12 +185,12 @@
         {#each portainerSteps as step}
           <div class="flex items-center gap-2">
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium {currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-500 {currentStep >= step ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/25' : 'bg-slate-800 text-slate-500'}"
             >
               {step}
             </div>
             {#if step < portainerSteps.length}
-              <div class="w-12 h-0.5 {currentStep > step ? 'bg-blue-600' : 'bg-gray-200'}"></div>
+              <div class="w-12 h-0.5 transition-all duration-500 {currentStep > step ? 'bg-indigo-500' : 'bg-slate-700'}"></div>
             {/if}
           </div>
         {/each}
@@ -172,7 +200,7 @@
       <div class="mb-8"></div>
     {/if}
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="bg-slate-800/50 rounded-xl shadow-xl shadow-black/20 border border-slate-700/50 p-6">
       {#if currentStep === 0}
         <ImportMethodSelect onSelect={handleMethodSelect} />
       {:else if currentStep === 1 && selectedMethod === 'paste'}
@@ -180,8 +208,8 @@
       {:else if currentStep === 15 && selectedMethod === 'paste' && inferenceResult}
         <!-- Inference summary step (step 1.5) -->
         <div class="mb-4">
-          <h2 class="text-base font-semibold text-gray-900">What we detected</h2>
-          <p class="text-sm text-gray-500 mt-0.5">Review auto-detected values before setting up storage.</p>
+          <h2 class="text-base font-semibold text-slate-100">What we detected</h2>
+          <p class="text-sm text-slate-500 mt-0.5">Review auto-detected values before setting up storage.</p>
         </div>
         <InferenceSummary
           inference={inferenceResult}
@@ -199,6 +227,7 @@
           portainerUrl={portainerUrl}
           apiKey={portainerApiKey}
           endpointId={portainerEndpointId}
+          savedSourceId={portainerSavedSourceId || undefined}
           onComplete={handlePortainerStep2Complete}
           onBack={() => { currentStep = 1; }}
         />

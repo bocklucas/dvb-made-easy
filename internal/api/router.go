@@ -1,8 +1,13 @@
 package api
 
 import (
+	"embed"
 	"encoding/json"
+	"io"
+	"io/fs"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -15,6 +20,7 @@ type Server struct {
 	manifest     *config.Manifest
 	key          []byte
 	configDir    string
+	stagingDir   string
 	broadcaster  *sse.Broadcaster
 	dockerClient restore.DockerClient
 }
@@ -23,11 +29,15 @@ func (s *Server) SetDockerClient(dc restore.DockerClient) {
 	s.dockerClient = dc
 }
 
-func NewRouter(manifest *config.Manifest, key []byte, configDir string, dockerClient restore.DockerClient) http.Handler {
+//go:embed all:build
+var frontendFS embed.FS
+
+func NewRouter(manifest *config.Manifest, key []byte, configDir string, stagingDir string, dockerClient restore.DockerClient) http.Handler {
 	s := &Server{
 		manifest:     manifest,
 		key:          key,
 		configDir:    configDir,
+		stagingDir:   stagingDir,
 		broadcaster:  sse.NewBroadcaster(),
 		dockerClient: dockerClient,
 	}
@@ -41,12 +51,18 @@ func NewRouter(manifest *config.Manifest, key []byte, configDir string, dockerCl
 
 	r.Post("/api/projects/import", s.handleImportCompose)
 	r.Post("/api/projects/import-git", s.handleImportGit)
+	r.Post("/api/git/browse", s.handleGitBrowse)
 	r.Post("/api/projects/import-portainer", s.handleImportPortainer)
 	r.Post("/api/projects/infer", s.handleInfer)
+	r.Post("/api/backup-creator/parse", s.handleBCParse)
+	r.Post("/api/backup-creator/git-fetch", s.handleBCGitFetch)
+	r.Post("/api/backup-creator/portainer-fetch", s.handleBCPortainerFetch)
+	r.Post("/api/backup-creator/generate", s.handleBCGenerate)
 	r.Post("/api/projects", s.handleCreateProject)
 	r.Get("/api/projects", s.handleListProjects)
 	r.Get("/api/projects/{id}", s.handleGetProject)
 	r.Delete("/api/projects/{id}", s.handleDeleteProject)
+	r.Put("/api/projects/{id}", s.handleUpdateProject)
 
 	r.Post("/api/projects/{id}/credentials", s.handleSaveCredentials)
 	r.Put("/api/projects/{id}/credentials", s.handleUpdateCredentials)
@@ -60,6 +76,7 @@ func NewRouter(manifest *config.Manifest, key []byte, configDir string, dockerCl
 	r.Get("/api/projects/{id}/backup-timestamps", s.handleBackupTimestamps)
 	r.Post("/api/projects/{id}/compose-restore", s.handleComposeRestore)
 
+	r.Get("/api/projects/{id}/volumes/check-exists", s.handleCheckVolumesExist)
 	r.Get("/api/projects/{id}/volumes/{vol}/backups", s.handleListBackups)
 
 	r.Post("/api/projects/{id}/volumes/{vol}/restore", s.handleRestore)
@@ -77,11 +94,61 @@ func NewRouter(manifest *config.Manifest, key []byte, configDir string, dockerCl
 
 	r.Post("/api/sources", s.handleCreateSavedSource)
 	r.Get("/api/sources", s.handleListSavedSources)
+	r.Get("/api/sources/{id}", s.handleGetSavedSource)
+	r.Put("/api/sources/{id}", s.handleUpdateSavedSource)
 	r.Delete("/api/sources/{id}", s.handleDeleteSavedSource)
 
 	r.Post("/api/backends", s.handleCreateSavedBackend)
 	r.Get("/api/backends", s.handleListSavedBackends)
+	r.Get("/api/backends/{id}", s.handleGetSavedBackend)
+	r.Put("/api/backends/{id}", s.handleUpdateSavedBackend)
 	r.Delete("/api/backends/{id}", s.handleDeleteSavedBackend)
+
+	// Serve static files from embedded FS
+	subFS, err := fs.Sub(frontendFS, "build")
+	if err != nil {
+		panic(err)
+	}
+	fileServer := http.FileServer(http.FS(subFS))
+
+	r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		if strings.HasPrefix(path, "/api") {
+			jsonError(w, "Not Found", http.StatusNotFound)
+			return
+		}
+
+		cleaned := filepath.Clean(path)
+		fsPath := strings.TrimPrefix(cleaned, "/")
+		if fsPath == "" {
+			fsPath = "index.html"
+		}
+
+		// Check if file exists in our subFS
+		_, err := subFS.Open(fsPath)
+		if err != nil {
+			// Serve index.html for SPA routing fallback
+			indexFile, err := subFS.Open("index.html")
+			if err != nil {
+				http.Error(w, "Index not found", http.StatusInternalServerError)
+				return
+			}
+			defer indexFile.Close()
+
+			content, err := io.ReadAll(indexFile)
+			if err != nil {
+				http.Error(w, "Read error", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(content)
+			return
+		}
+
+		fileServer.ServeHTTP(w, r)
+	}))
 
 	return r
 }

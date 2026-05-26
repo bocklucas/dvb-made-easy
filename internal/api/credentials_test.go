@@ -292,9 +292,61 @@ func TestDeleteCredentials(t *testing.T) {
 		t.Fatalf("status: got %d, want 204", resp.StatusCode)
 	}
 
-	getResp, _ := http.Get(srv.URL + "/api/projects/" + p.ID + "/credentials")
+	getResp, err := http.Get(srv.URL + "/api/projects/" + p.ID + "/credentials")
 	defer getResp.Body.Close()
 	if getResp.StatusCode != http.StatusNotFound {
 		t.Fatalf("after delete: got %d, want 404", getResp.StatusCode)
+	}
+}
+
+func TestSaveCredentialsWithSavedBackendID(t *testing.T) {
+	srv, m, _ := setupTestServer(t)
+
+	dir := t.TempDir()
+	p := m.AddProject(config.Project{
+		Name:           "test-project",
+		ComposeContent: "services: {}",
+	})
+
+	sb := m.AddSavedBackend(config.SavedBackend{
+		Name: "Test Saved Local",
+		Credentials: storage.Credentials{
+			Type: "local",
+			Local: &storage.LocalCredentials{
+				Path: dir,
+			},
+		},
+	})
+
+	body, _ := json.Marshal(map[string]any{
+		"type":             "local",
+		"saved_backend_id": sb.ID,
+	})
+
+	resp, err := http.Post(srv.URL+"/api/projects/"+p.ID+"/credentials", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var errBody map[string]string
+		json.NewDecoder(resp.Body).Decode(&errBody)
+		t.Fatalf("status: got %d, want 200, error: %v", resp.StatusCode, errBody)
+	}
+
+	// Verify that the resolved credentials were saved on the project
+	proj, ok := m.GetProject(p.ID)
+	if !ok {
+		t.Fatalf("project not found")
+	}
+	if proj.Credentials == nil {
+		t.Fatalf("project credentials not set")
+	}
+	if proj.Credentials.SavedBackendID != sb.ID {
+		t.Errorf("SavedBackendID: got %q, want %q", proj.Credentials.SavedBackendID, sb.ID)
+	}
+	if proj.Credentials.Local == nil || proj.Credentials.Local.Path != dir {
+		t.Errorf("resolved path: got %v, want %q", proj.Credentials.Local, dir)
 	}
 }

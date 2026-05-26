@@ -18,17 +18,19 @@ const (
 )
 
 type RestoreRequest struct {
-	Token        string
-	Project      string
-	Services     []string
-	DependsOn    map[string][]string
-	VolumeName   string
-	BackupKey    string
-	Mode         RestoreMode
-	TargetName   string
-	Passphrase   string
-	ContainerIDs []string
-	BackupSize   int64
+	Token          string
+	Project        string
+	StackName      string
+	Services       []string
+	DependsOn      map[string][]string
+	VolumeName     string
+	BackupKey      string
+	Mode           RestoreMode
+	TargetName     string
+	Passphrase     string
+	ContainerIDs   []string
+	BackupSize     int64
+	DeploymentMode string
 }
 
 type Orchestrator struct {
@@ -49,7 +51,11 @@ func (o *Orchestrator) Run(ctx context.Context, req RestoreRequest, backend stor
 	log.Printf("[restore] starting restore token=%s mode=%s volume=%s backup=%s", req.Token, req.Mode, req.VolumeName, req.BackupKey)
 
 	if req.TargetName == "" {
-		req.TargetName = fmt.Sprintf("%s_%s", req.Project, req.VolumeName)
+		prefix := req.StackName
+		if prefix == "" {
+			prefix = req.Project
+		}
+		req.TargetName = fmt.Sprintf("%s_%s", prefix, req.VolumeName)
 	}
 
 	var err error

@@ -23,27 +23,24 @@
   let isTerminal = $derived(isComplete || isFailed);
 </script>
 
-<div class="p-6 max-w-2xl">
-  <!-- Header -->
+<div class="p-6 max-w-2xl animate-fade-in">
   <div class="mb-6">
-    <h1 class="text-2xl font-semibold text-gray-900">Restore Progress</h1>
-    <p class="text-sm text-gray-500 mt-1">
-      Token: <span class="font-mono text-gray-700">{$page.params.token}</span>
+    <h1 class="text-2xl font-light text-slate-100">Restore Progress</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Token: <span class="font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">{$page.params.token}</span>
     </p>
   </div>
 
   {#if events.length === 0}
     {#if connectionLost}
-      <!-- No events and connection lost -->
-      <div class="text-gray-500">
+      <div class="text-slate-500">
         <p class="mb-3">Restore session not found or already completed.</p>
-        <a href="/" class="text-blue-600 hover:underline text-sm">← Back to projects</a>
+        <a href="/" class="text-indigo-400 hover:text-indigo-300 hover:underline text-sm transition-colors">← Back to projects</a>
       </div>
     {:else}
-      <!-- Waiting for first event -->
-      <div class="flex items-center gap-2 text-gray-500">
+      <div class="flex items-center gap-2 text-slate-500">
         <svg
-          class="w-4 h-4 animate-spin text-blue-500"
+          class="w-4 h-4 animate-spin text-indigo-400"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -60,40 +57,36 @@
       </div>
     {/if}
   {:else}
-    <!-- Timeline -->
     <RestoreProgress {events} />
 
-    <!-- Connection lost warning (non-terminal) -->
     {#if connectionLost && !isTerminal}
       <div
-        class="mt-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800"
+        class="mt-4 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400"
       >
         Connection lost — the restore may still be running.
       </div>
     {/if}
 
-    <!-- Success banner -->
     {#if isComplete}
       <div
-        class="mt-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800"
+        class="mt-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-sm text-emerald-400"
       >
         <p class="font-medium">Restore completed successfully.</p>
-        <a href="/" class="mt-1 inline-block text-green-700 underline hover:text-green-900"
+        <a href="/" class="mt-1 inline-block text-emerald-400 underline hover:text-emerald-300 transition-colors"
           >← Back to projects</a
         >
       </div>
     {/if}
 
-    <!-- Failure banner -->
     {#if isFailed}
       <div
-        class="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-800"
+        class="mt-4 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400"
       >
         <p class="font-medium">Restore failed.</p>
         {#if lastEvent?.details}
-          <pre class="mt-2 text-xs font-mono whitespace-pre-wrap break-all text-red-700">{lastEvent.details}</pre>
+          <pre class="mt-2 text-xs font-mono whitespace-pre-wrap break-all text-red-300">{lastEvent.details}</pre>
         {/if}
-        <a href="/" class="mt-2 inline-block text-red-700 underline hover:text-red-900"
+        <a href="/" class="mt-2 inline-block text-red-400 underline hover:text-red-300 transition-colors"
           >← Back to projects</a
         >
       </div>

@@ -58,6 +58,14 @@ func (m *mockDockerClient) PullImageIfMissing(ctx context.Context, image string)
 	return nil
 }
 
+func (m *mockDockerClient) FindServices(ctx context.Context, stack string, services []string) ([]docker.ServiceInfo, error) {
+	return nil, nil
+}
+
+func (m *mockDockerClient) ScaleService(ctx context.Context, id string, version uint64, replicas uint64) error {
+	return nil
+}
+
 type mockBackend struct {
 	data []byte
 }

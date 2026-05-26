@@ -1,0 +1,1 @@
+# Keep this directory in git so go:embed compiles successfully when run locally

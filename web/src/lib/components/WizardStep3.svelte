@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import type { VolumeInfo, BackupFile } from '$lib/types';
   import { listBackups } from '$lib/api';
+  import * as projectState from '$lib/state/projects.svelte';
 
   interface Props {
     projectId: string;
@@ -41,44 +42,45 @@
     loading = false;
   });
 
-  function handleFinish() {
+  async function handleFinish() {
+    await projectState.load();
     goto(`/projects/${projectId}`);
   }
 </script>
 
 <div class="space-y-6">
-  <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+  <div class="bg-slate-800/50 rounded-lg p-4 space-y-3">
     <div class="flex justify-between text-sm">
-      <span class="text-gray-500">Project</span>
-      <span class="font-medium text-gray-900">{projectName}</span>
+      <span class="text-slate-500">Project</span>
+      <span class="font-medium text-slate-100">{projectName}</span>
     </div>
     <div class="flex justify-between text-sm">
-      <span class="text-gray-500">Volumes</span>
-      <span class="font-medium text-gray-900">{uniqueVolumes.length}</span>
+      <span class="text-slate-500">Volumes</span>
+      <span class="font-medium text-slate-100">{uniqueVolumes.length}</span>
     </div>
     <div class="flex justify-between text-sm">
-      <span class="text-gray-500">Storage Backend</span>
-      <span class="font-medium text-gray-900 uppercase">{backendType}</span>
+      <span class="text-slate-500">Storage Backend</span>
+      <span class="font-medium text-slate-100 uppercase">{backendType}</span>
     </div>
   </div>
 
   <div>
-    <p class="text-sm font-medium text-gray-700 mb-3">Backup Verification</p>
+    <p class="text-sm font-medium text-slate-300 mb-3">Backup Verification</p>
     {#if loading}
-      <div class="text-sm text-gray-500">Checking backups...</div>
+      <div class="text-sm text-slate-500">Checking backups...</div>
     {:else}
       <div class="space-y-2">
         {#each uniqueVolumes as vol}
-          <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
-            <span class="text-sm text-gray-700 font-mono">{vol.name}</span>
+          <div class="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
+            <span class="text-sm text-slate-300 font-mono">{vol.name}</span>
             {#if backupCounts[vol.name] !== undefined}
               <span
-                class="text-sm font-medium {backupCounts[vol.name] > 0 ? 'text-green-600' : 'text-gray-400'}"
+                class="text-sm font-medium {backupCounts[vol.name] > 0 ? 'text-emerald-400' : 'text-slate-500'}"
               >
                 {backupCounts[vol.name]} backup{backupCounts[vol.name] === 1 ? '' : 's'}
               </span>
             {:else}
-              <span class="text-sm text-gray-400">—</span>
+              <span class="text-sm text-slate-500">—</span>
             {/if}
           </div>
         {/each}
@@ -95,13 +97,13 @@
   <div class="flex gap-3">
     <button
       onclick={onBack}
-      class="flex-1 py-2 px-4 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+      class="flex-1 py-2 px-4 border border-slate-600 text-slate-300 hover:bg-slate-800/50 rounded-lg font-medium transition-all duration-200 active:scale-[0.98]"
     >
       ← Back
     </button>
     <button
       onclick={handleFinish}
-      class="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+      class="flex-1 py-2 px-4 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white rounded-lg font-medium transition-all duration-200 active:scale-[0.98]"
     >
       Finish
     </button>

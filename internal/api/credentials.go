@@ -8,24 +8,6 @@ import (
 	"github.com/offen/restore-manager/internal/storage"
 )
 
-type credentialResponse struct {
-	Type  storage.BackendType `json:"type"`
-	Local *localCredResponse  `json:"local,omitempty"`
-	SMB   *smbCredResponse    `json:"smb,omitempty"`
-}
-
-type localCredResponse struct {
-	Path string `json:"path"`
-}
-
-type smbCredResponse struct {
-	Host     string `json:"host"`
-	Share    string `json:"share"`
-	Path     string `json:"path"`
-	Username string `json:"username"`
-	Port     int    `json:"port"`
-}
-
 func (s *Server) handleSaveCredentials(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -39,6 +21,13 @@ func (s *Server) handleSaveCredentials(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
 		return
+	}
+
+	if creds.SavedBackendID != "" {
+		saved, ok := s.manifest.GetSavedBackend(creds.SavedBackendID)
+		if ok {
+			mergeCredentials(&creds, &saved.Credentials)
+		}
 	}
 
 	backend, err := storage.NewBackend(&creds)
@@ -73,28 +62,8 @@ func (s *Server) handleGetCredentials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := credentialResponse{
-		Type: project.Credentials.Type,
-	}
-
-	if project.Credentials.Local != nil {
-		resp.Local = &localCredResponse{
-			Path: project.Credentials.Local.Path,
-		}
-	}
-
-	if project.Credentials.SMB != nil {
-		resp.SMB = &smbCredResponse{
-			Host:     project.Credentials.SMB.Host,
-			Share:    project.Credentials.SMB.Share,
-			Path:     project.Credentials.SMB.Path,
-			Username: project.Credentials.SMB.Username,
-			Port:     project.Credentials.SMB.Port,
-		}
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(project.Credentials.Sanitize())
 }
 
 func (s *Server) handleUpdateCredentials(w http.ResponseWriter, r *http.Request) {
@@ -112,11 +81,17 @@ func (s *Server) handleUpdateCredentials(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// If SMB password is empty, preserve the existing stored password.
-	if creds.Type == storage.BackendSMB && creds.SMB != nil && creds.SMB.Password == "" {
-		if project.Credentials != nil && project.Credentials.SMB != nil {
-			creds.SMB.Password = project.Credentials.SMB.Password
+	// Resolve saved backend if provided
+	if creds.SavedBackendID != "" {
+		saved, ok := s.manifest.GetSavedBackend(creds.SavedBackendID)
+		if ok {
+			mergeCredentials(&creds, &saved.Credentials)
 		}
+	}
+
+	// Preserve existing stored secrets if sent empty from the frontend.
+	if project.Credentials != nil {
+		mergeCredentials(&creds, project.Credentials)
 	}
 
 	backend, err := storage.NewBackend(&creds)

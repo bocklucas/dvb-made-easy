@@ -17,7 +17,7 @@
   });
 </script>
 
-<div class="flex h-screen bg-gray-50">
+<div class="flex h-screen bg-slate-950">
   {#if showSidebar}
     <ProjectList />
   {/if}

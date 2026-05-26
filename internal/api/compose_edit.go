@@ -49,108 +49,11 @@ func (s *Server) handleUpdateCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build lookup of existing volumes by name.
-	existing := make(map[string]config.Volume, len(project.Volumes))
-	for _, v := range project.Volumes {
-		existing[v.Name] = v
-	}
-
-	// Build lookup of backup patterns from new compose BackupJobs.
-	patternMap := make(map[string]string)
-	for _, job := range result.BackupJobs {
-		patternMap[job.SourceVolume] = job.FilenameFormat
-	}
-
-	// Deduplicate incoming volumes and track insertion order.
-	seen := make(map[string]bool)
-	var newVolumeNames []string
-	newVolumeMeta := make(map[string]compose.VolumeMapping)
-	for _, vm := range result.Volumes {
-		if seen[vm.Name] {
-			continue
-		}
-		seen[vm.Name] = true
-		newVolumeNames = append(newVolumeNames, vm.Name)
-		newVolumeMeta[vm.Name] = vm
-	}
-
-	newSet := make(map[string]bool, len(newVolumeNames))
-	for _, n := range newVolumeNames {
-		newSet[n] = true
-	}
-
-	var added, unchanged []volumeResponse
-	var finalVolumes []config.Volume
-
-	for _, name := range newVolumeNames {
-		vm := newVolumeMeta[name]
-		if prev, exists := existing[name]; exists {
-			// Unchanged — preserve existing BackupPattern and Passphrase.
-			unchanged = append(unchanged, volumeResponse{
-				Name:             name,
-				ComposeService:   vm.Service,
-				ComposeMountPath: vm.MountPath,
-				BackupPattern:    prev.BackupPattern,
-			})
-			finalVolumes = append(finalVolumes, config.Volume{
-				Name:             name,
-				ComposeService:   vm.Service,
-				ComposeMountPath: vm.MountPath,
-				BackupPattern:    prev.BackupPattern,
-				Passphrase:       prev.Passphrase,
-			})
-		} else {
-			// New volume — pick up pattern from BackupJobs if available.
-			pattern := patternMap[name]
-			added = append(added, volumeResponse{
-				Name:             name,
-				ComposeService:   vm.Service,
-				ComposeMountPath: vm.MountPath,
-				BackupPattern:    pattern,
-			})
-			finalVolumes = append(finalVolumes, config.Volume{
-				Name:             name,
-				ComposeService:   vm.Service,
-				ComposeMountPath: vm.MountPath,
-				BackupPattern:    pattern,
-			})
-		}
-	}
-
-	// Detect removed volumes — NOT deleted yet. They stay in the manifest until
-	// the user explicitly confirms removal via the confirm-removal endpoint.
-	var removed []volumeResponse
-	for _, prev := range project.Volumes {
-		if !newSet[prev.Name] {
-			removed = append(removed, volumeResponse{
-				Name:             prev.Name,
-				ComposeService:   prev.ComposeService,
-				ComposeMountPath: prev.ComposeMountPath,
-				BackupPattern:    prev.BackupPattern,
-			})
-			// Retain in finalVolumes to preserve stored passphrase.
-			finalVolumes = append(finalVolumes, prev)
-		}
-	}
+	finalVolumes, diff := diffComposeVolumes(project.Volumes, result)
 
 	// Persist updated compose content and merged volume list.
 	s.manifest.UpdateProjectCompose(id, req.ComposeContent, finalVolumes)
 	s.persistConfig()
-
-	diff := composeDiffResponse{
-		Added:     added,
-		Removed:   removed,
-		Unchanged: unchanged,
-	}
-	if diff.Added == nil {
-		diff.Added = []volumeResponse{}
-	}
-	if diff.Removed == nil {
-		diff.Removed = []volumeResponse{}
-	}
-	if diff.Unchanged == nil {
-		diff.Unchanged = []volumeResponse{}
-	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(diff)

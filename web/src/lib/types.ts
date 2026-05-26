@@ -1,4 +1,4 @@
-export type ProjectSource = 'paste' | 'git' | 'portainer';
+export type ProjectSource = 'paste' | 'git' | 'portainer' | 'project';
 
 export interface PortainerSource {
   portainer_url: string;
@@ -18,6 +18,7 @@ export interface PortainerStack {
   EndpointId: number;
   Status: number;
   is_offen_backed: boolean;
+  endpoint_name?: string;
 }
 
 export interface PortainerConnectResponse {
@@ -27,7 +28,7 @@ export interface PortainerConnectResponse {
 export interface GitSource {
   repo_url: string;
   branch: string;
-  file_path: string;
+  file_path?: string;
   last_synced_commit?: string;
   auth_token?: string;
   ssh_private_key?: string;
@@ -40,6 +41,20 @@ export interface GitImportRequest {
   auth_token?: string;
   ssh_private_key?: string;
   project_name: string;
+  deployment_mode?: string;
+  saved_source_id?: string;
+}
+
+export interface GitBrowseRequest {
+  repo_url?: string;
+  branch?: string;
+  auth_token?: string;
+  ssh_private_key?: string;
+  saved_source_id?: string;
+}
+
+export interface GitBrowseResponse {
+  files: string[];
 }
 
 export interface GitSyncResponse {
@@ -53,6 +68,7 @@ export interface Project {
   name: string;
   source?: ProjectSource;
   deployment_mode?: string;
+  swarm_name?: string;
   compose_content: string;
   compose_hash: string;
   added_at: string;
@@ -93,22 +109,67 @@ export interface BackupFile {
 }
 
 export interface Credentials {
-  type: 'local' | 'smb';
+  type: 'local' | 'smb' | 's3' | 'webdav' | 'azure' | 'dropbox' | 'gdrive' | 'sftp';
+  saved_backend_id?: string;
   local?: { path: string };
   smb?: {
     host: string;
     share: string;
     path: string;
     username: string;
-    password: string;
+    password?: string;
     port: number;
+  };
+  s3?: {
+    bucket: string;
+    access_key: string;
+    secret_key?: string;
+    endpoint: string;
+    region: string;
+    storage_class: string;
+  };
+  webdav?: {
+    url: string;
+    username: string;
+    password?: string;
+    path: string;
+    insecure: boolean;
+  };
+  azure?: {
+    connection_string?: string;
+    container: string;
+  };
+  dropbox?: {
+    access_token?: string;
+    app_key: string;
+    app_secret?: string;
+    remote_path: string;
+  };
+  gdrive?: {
+    folder_id: string;
+    credentials?: string;
+    impersonate: string;
+  };
+  sftp?: {
+    host: string;
+    user: string;
+    port: number;
+    password?: string;
+    private_key?: string;
+    remote_path: string;
   };
 }
 
 export interface CredentialResponse {
-  type: 'local' | 'smb';
+  type: 'local' | 'smb' | 's3' | 'webdav' | 'azure' | 'dropbox' | 'gdrive' | 'sftp';
   local?: { path: string };
   smb?: { host: string; share: string; path: string; username: string; port: number };
+  s3?: { bucket: string; access_key: string; endpoint: string; region: string; storage_class: string };
+  webdav?: { url: string; username: string; path: string; insecure: boolean };
+  azure?: { container: string };
+  dropbox?: { app_key: string; remote_path: string };
+  gdrive?: { folder_id: string; impersonate: string };
+  sftp?: { host: string; user: string; port: number; remote_path: string };
 }
 
 export interface RestoreRequest {
@@ -149,7 +210,7 @@ export interface TimestampBackup {
 }
 
 export interface ComposeRestoreRequest {
-  mode: 'full_stack' | 'new_volume';
+  mode: 'new_volume';
   timestamp: string;
   volumes: ComposeVolumeRestore[];
   container_ids?: string[];

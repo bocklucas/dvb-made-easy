@@ -39,26 +39,26 @@
 
 <div class="space-y-4">
   <div>
-    <h2 class="text-lg font-semibold text-gray-900">How do you want to import your project?</h2>
-    <p class="text-sm text-gray-500 mt-1">Choose an import method to get started.</p>
+    <h2 class="text-lg font-semibold text-slate-100">How do you want to import your project?</h2>
+    <p class="text-sm text-slate-500 mt-1">Choose an import method to get started.</p>
   </div>
 
   <div class="space-y-3">
     {#each methods as method}
       <button
         onclick={() => onSelect(method.id)}
-        class="w-full flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 text-left transition-colors group"
+        class="w-full flex items-start gap-4 p-4 border border-slate-700/50 rounded-lg hover:border-indigo-400 hover:bg-indigo-500/10 text-left transition-colors group"
       >
-        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
-          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-500/10 group-hover:bg-indigo-500/20 flex items-center justify-center transition-all duration-200 active:scale-[0.98]">
+          <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d={method.icon} />
           </svg>
         </div>
         <div>
-          <div class="font-medium text-gray-900">{method.label}</div>
-          <div class="text-sm text-gray-500 mt-0.5">{method.description}</div>
+          <div class="font-medium text-slate-100">{method.label}</div>
+          <div class="text-sm text-slate-500 mt-0.5">{method.description}</div>
         </div>
-        <svg class="w-5 h-5 text-gray-300 group-hover:text-blue-400 ml-auto flex-shrink-0 mt-2.5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <svg class="w-5 h-5 text-slate-500 group-hover:text-indigo-400 ml-auto flex-shrink-0 mt-2.5 transition-all duration-200 active:scale-[0.98]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </button>

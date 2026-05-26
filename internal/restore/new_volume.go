@@ -21,6 +21,16 @@ func (o *Orchestrator) runNewVolume(ctx context.Context, req RestoreRequest, bac
 		return err
 	}
 
+	// Wipe volume if it exists
+	_, inspectErr := o.docker.InspectVolume(ctx, req.TargetName)
+	if inspectErr == nil {
+		o.send(req.Token, "wiping_volume", "in_progress", fmt.Sprintf("Wiping existing volume %s", req.TargetName))
+		if err := o.docker.RemoveVolume(ctx, req.TargetName); err != nil {
+			o.sendFailed(req.Token, fmt.Sprintf("wipe volume (remove): %s", err))
+			return err
+		}
+	}
+
 	o.send(req.Token, "creating_volume", "in_progress", fmt.Sprintf("Creating volume %s", req.TargetName))
 	if err := o.docker.CreateVolume(ctx, req.TargetName); err != nil {
 		o.sendFailed(req.Token, fmt.Sprintf("create volume: %s", err))
@@ -62,6 +72,7 @@ func (o *Orchestrator) downloadBackup(ctx context.Context, req RestoreRequest, b
 		return err
 	}
 
+	o.send(req.Token, "downloading", "done", "Download complete")
 	return nil
 }
 
@@ -73,7 +84,11 @@ func (o *Orchestrator) extractBackup(ctx context.Context, req RestoreRequest, tm
 		return err
 	}
 
-	cfg := BuildExtractionConfig(filepath.Base(req.BackupKey), StagingVolume, filepath.Base(tmpDir), req.TargetName, req.Passphrase)
+	cfg, err := BuildExtractionConfig(filepath.Base(req.BackupKey), StagingVolume, filepath.Base(tmpDir), req.TargetName, req.Passphrase)
+	if err != nil {
+		o.sendFailed(req.Token, fmt.Sprintf("invalid backup filename: %s", err))
+		return err
+	}
 
 	exitCode, err := o.docker.RunOneShot(ctx, cfg, nil)
 	if err != nil {

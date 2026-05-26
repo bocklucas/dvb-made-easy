@@ -45,6 +45,8 @@ func mockPortainerServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/api/stacks", func(w http.ResponseWriter, r *http.Request) {
 		stacks := []portainer.Stack{
 			{ID: 1, Name: "mystack", EndpointID: 1, Status: 1},
+			{ID: 2, Name: "other-endpoint-stack", EndpointID: 2, Status: 1},
+			{ID: 3, Name: "another-stack", EndpointID: 1, Status: 1},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(stacks)
@@ -53,6 +55,14 @@ func mockPortainerServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/api/stacks/1/file", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]string{
 			"StackFileContent": testComposeContent,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	mux.HandleFunc("/api/stacks/3/file", func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]string{
+			"StackFileContent": "services:\n  web:\n    image: nginx\n",
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
@@ -144,20 +154,87 @@ func TestPortainerStacks(t *testing.T) {
 	var stacks []struct {
 		ID           int    `json:"Id"`
 		Name         string `json:"Name"`
+		EndpointID   int    `json:"EndpointId"`
 		IsOfenBacked bool   `json:"is_offen_backed"`
+		EndpointName string `json:"endpoint_name"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&stacks); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 
-	if len(stacks) != 1 {
-		t.Fatalf("stacks: got %d, want 1", len(stacks))
+	// The mock returns 3 stacks total (endpoint 1, 2, 1).
+	// Client-side filtering should return only the 2 stacks for endpoint 1.
+	if len(stacks) != 2 {
+		t.Fatalf("stacks: got %d, want 2 (should filter by endpoint_id)", len(stacks))
+	}
+	for _, s := range stacks {
+		if s.EndpointID != 1 {
+			t.Fatalf("stack %q has EndpointId %d, want 1", s.Name, s.EndpointID)
+		}
+		if s.EndpointName != "local" {
+			t.Errorf("expected EndpointName 'local', got %q", s.EndpointName)
+		}
 	}
 	if stacks[0].Name != "mystack" {
 		t.Fatalf("stack name: got %q, want %q", stacks[0].Name, "mystack")
 	}
 	if !stacks[0].IsOfenBacked {
 		t.Fatal("stack should be detected as offen-backed")
+	}
+	if stacks[1].Name != "another-stack" {
+		t.Fatalf("stack name: got %q, want %q", stacks[1].Name, "another-stack")
+	}
+	if stacks[1].IsOfenBacked {
+		t.Fatal("another-stack should NOT be detected as offen-backed")
+	}
+}
+
+func TestPortainerStacksNoFilter(t *testing.T) {
+	mockSrv := mockPortainerServer(t)
+	defer mockSrv.Close()
+
+	appSrv, _, _ := setupTestServer(t)
+
+	// Omit endpoint_id (defaults to 0, which means no filter)
+	body, _ := json.Marshal(map[string]interface{}{
+		"url":     mockSrv.URL,
+		"api_key": "test-key",
+	})
+
+	resp, err := http.Post(appSrv.URL+"/api/portainer/stacks", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: got %d, want 200", resp.StatusCode)
+	}
+
+	var stacks []struct {
+		ID           int    `json:"Id"`
+		Name         string `json:"Name"`
+		EndpointID   int    `json:"EndpointId"`
+		IsOfenBacked bool   `json:"is_offen_backed"`
+		EndpointName string `json:"endpoint_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&stacks); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Should return all 3 stacks
+	if len(stacks) != 3 {
+		t.Fatalf("stacks: got %d, want 3", len(stacks))
+	}
+
+	// Check endpoint names
+	for _, s := range stacks {
+		if s.EndpointID == 1 && s.EndpointName != "local" {
+			t.Errorf("stack %q: expected EndpointName 'local', got %q", s.Name, s.EndpointName)
+		}
+		if s.EndpointID == 2 && s.EndpointName != "" {
+			t.Errorf("stack %q: expected empty EndpointName, got %q", s.Name, s.EndpointName)
+		}
 	}
 }
 

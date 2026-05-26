@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/offen/restore-manager/internal/storage"
@@ -50,3 +51,25 @@ func (s *Server) handleListBackups(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(backups)
 }
+
+func (s *Server) handleCheckVolumesExist(w http.ResponseWriter, r *http.Request) {
+	namesParam := r.URL.Query().Get("names")
+	if namesParam == "" {
+		http.Error(w, `{"error":"names query parameter is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	exists := make(map[string]bool)
+	for _, volName := range strings.Split(namesParam, ",") {
+		volName = strings.TrimSpace(volName)
+		if volName == "" {
+			continue
+		}
+		_, err := s.dockerClient.InspectVolume(r.Context(), volName)
+		exists[volName] = (err == nil)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(exists)
+}
+

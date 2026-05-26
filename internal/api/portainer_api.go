@@ -10,8 +10,9 @@ import (
 )
 
 type portainerConnectRequest struct {
-	URL    string `json:"url"`
-	APIKey string `json:"api_key"`
+	URL           string `json:"url"`
+	APIKey        string `json:"api_key"`
+	SavedSourceID string `json:"saved_source_id,omitempty"`
 }
 
 type portainerConnectResponse struct {
@@ -19,11 +20,13 @@ type portainerConnectResponse struct {
 }
 
 type importPortainerRequest struct {
-	PortainerURL string `json:"portainer_url"`
-	APIKey       string `json:"api_key"`
-	StackID      int    `json:"stack_id"`
-	EndpointID   int    `json:"endpoint_id"`
-	ProjectName  string `json:"project_name"`
+	PortainerURL   string `json:"portainer_url"`
+	APIKey         string `json:"api_key"`
+	StackID        int    `json:"stack_id"`
+	EndpointID     int    `json:"endpoint_id"`
+	ProjectName    string `json:"project_name"`
+	DeploymentMode string `json:"deployment_mode"`
+	SavedSourceID  string `json:"saved_source_id,omitempty"`
 }
 
 func (s *Server) handlePortainerConnect(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +34,18 @@ func (s *Server) handlePortainerConnect(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
 		return
+	}
+
+	if req.SavedSourceID != "" {
+		saved, ok := s.manifest.GetSavedSource(req.SavedSourceID)
+		if ok && saved.PortainerConfig != nil {
+			if req.URL == "" {
+				req.URL = saved.PortainerConfig.PortainerURL
+			}
+			if req.APIKey == "" {
+				req.APIKey = saved.PortainerConfig.APIKey
+			}
+		}
 	}
 
 	if req.URL == "" {
@@ -60,9 +75,10 @@ func (s *Server) handlePortainerConnect(w http.ResponseWriter, r *http.Request) 
 }
 
 type portainerStacksRequest struct {
-	URL        string `json:"url"`
-	APIKey     string `json:"api_key"`
-	EndpointID int    `json:"endpoint_id"`
+	URL           string `json:"url"`
+	APIKey        string `json:"api_key"`
+	EndpointID    int    `json:"endpoint_id"`
+	SavedSourceID string `json:"saved_source_id,omitempty"`
 }
 
 func (s *Server) handlePortainerStacks(w http.ResponseWriter, r *http.Request) {
@@ -72,12 +88,34 @@ func (s *Server) handlePortainerStacks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.URL == "" || req.APIKey == "" || req.EndpointID == 0 {
-		http.Error(w, `{"error":"url, api_key, and endpoint_id are required"}`, http.StatusBadRequest)
+	if req.SavedSourceID != "" {
+		saved, ok := s.manifest.GetSavedSource(req.SavedSourceID)
+		if ok && saved.PortainerConfig != nil {
+			if req.URL == "" {
+				req.URL = saved.PortainerConfig.PortainerURL
+			}
+			if req.APIKey == "" {
+				req.APIKey = saved.PortainerConfig.APIKey
+			}
+		}
+	}
+
+	if req.URL == "" || req.APIKey == "" {
+		http.Error(w, `{"error":"url and api_key are required"}`, http.StatusBadRequest)
 		return
 	}
 
 	client := portainer.NewClient(req.URL, req.APIKey)
+
+	endpoints, err := client.ListEndpoints(r.Context())
+	if err != nil {
+		jsonError(w, "failed to list endpoints: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	endpointMap := make(map[int]string)
+	for _, ep := range endpoints {
+		endpointMap[ep.ID] = ep.Name
+	}
 
 	stacks, err := client.ListStacks(r.Context(), req.EndpointID)
 	if err != nil {
@@ -91,6 +129,9 @@ func (s *Server) handlePortainerStacks(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			stacks[i].IsOfenBacked = portainer.IsOfenBacked(content)
 		}
+		if name, ok := endpointMap[stack.EndpointID]; ok {
+			stacks[i].EndpointName = name
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -102,6 +143,18 @@ func (s *Server) handleImportPortainer(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
 		return
+	}
+
+	if req.SavedSourceID != "" {
+		saved, ok := s.manifest.GetSavedSource(req.SavedSourceID)
+		if ok && saved.PortainerConfig != nil {
+			if req.PortainerURL == "" {
+				req.PortainerURL = saved.PortainerConfig.PortainerURL
+			}
+			if req.APIKey == "" {
+				req.APIKey = saved.PortainerConfig.APIKey
+			}
+		}
 	}
 
 	if req.PortainerURL == "" {
@@ -139,33 +192,7 @@ func (s *Server) handleImportPortainer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patternMap := make(map[string]string)
-	for _, job := range result.BackupJobs {
-		patternMap[job.SourceVolume] = job.FilenameFormat
-	}
-
-	seen := make(map[string]bool)
-	var volumes []config.Volume
-	var volResponses []volumeResponse
-	for _, v := range result.Volumes {
-		if seen[v.Name] {
-			continue
-		}
-		seen[v.Name] = true
-		vol := config.Volume{
-			Name:             v.Name,
-			ComposeService:   v.Service,
-			ComposeMountPath: v.MountPath,
-			BackupPattern:    patternMap[v.Name],
-		}
-		volumes = append(volumes, vol)
-		volResponses = append(volResponses, volumeResponse{
-			Name:             v.Name,
-			ComposeService:   v.Service,
-			ComposeMountPath: v.MountPath,
-			BackupPattern:    vol.BackupPattern,
-		})
-	}
+	volumes, volResponses := parseComposeVolumes(result)
 
 	ps := &portainer.PortainerSource{
 		PortainerURL: req.PortainerURL,
@@ -175,6 +202,7 @@ func (s *Server) handleImportPortainer(w http.ResponseWriter, r *http.Request) {
 
 	project := config.Project{
 		Name:            req.ProjectName,
+		DeploymentMode:  req.DeploymentMode,
 		ComposeContent:  composeContent,
 		Volumes:         volumes,
 		Source:          "portainer",

@@ -16,4 +16,6 @@ type DockerClient interface {
 	StartContainer(ctx context.Context, id string) error
 	RunOneShot(ctx context.Context, cfg docker.OneShotConfig, logWriter io.Writer) (int, error)
 	PullImageIfMissing(ctx context.Context, image string) error
+	FindServices(ctx context.Context, stack string, services []string) ([]docker.ServiceInfo, error)
+	ScaleService(ctx context.Context, id string, version uint64, replicas uint64) error
 }

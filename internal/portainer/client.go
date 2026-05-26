@@ -27,6 +27,7 @@ type Stack struct {
 	EndpointID   int    `json:"EndpointId"`
 	Status       int    `json:"Status"`
 	IsOfenBacked bool   `json:"is_offen_backed"`
+	EndpointName string `json:"endpoint_name,omitempty"`
 }
 
 type StackFile struct {
@@ -82,17 +83,22 @@ func (c *Client) ListEndpoints(ctx context.Context) ([]Endpoint, error) {
 }
 
 func (c *Client) ListStacks(ctx context.Context, endpointID int) ([]Stack, error) {
-	path := fmt.Sprintf("/api/stacks?filters={\"EndpointId\":%d}", endpointID)
-	resp, err := c.do(ctx, "GET", path, nil)
+	resp, err := c.do(ctx, "GET", "/api/stacks", nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	var stacks []Stack
-	if err := json.NewDecoder(resp.Body).Decode(&stacks); err != nil {
+	var allStacks []Stack
+	if err := json.NewDecoder(resp.Body).Decode(&allStacks); err != nil {
 		return nil, err
 	}
-	return stacks, nil
+	var filtered []Stack
+	for _, s := range allStacks {
+		if endpointID == 0 || s.EndpointID == endpointID {
+			filtered = append(filtered, s)
+		}
+	}
+	return filtered, nil
 }
 
 func (c *Client) GetStackFile(ctx context.Context, stackID int) (string, error) {

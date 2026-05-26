@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 [build]
   cmd = "go build -buildvcs=false -o ./tmp/server ./cmd/server"
   bin = "./tmp/server"
-  args_bin = ["--config-dir", "/app/config"]
+  args_bin = ["--config-dir", "./config-dev", "--staging-dir", "./staging-dev"]
   include_ext = ["go"]
   include_dir = ["cmd", "internal"]
   exclude_dir = ["web", "docs", "vendor", "tmp"]

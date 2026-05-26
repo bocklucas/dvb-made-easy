@@ -247,3 +247,54 @@ volumes:
 		t.Errorf("local_path: got %q, want %q", result.Storage.LocalPath, "/mnt/backups")
 	}
 }
+
+func TestInferSMBStorageFromCIFSVolume(t *testing.T) {
+	input := `
+services:
+  app:
+    image: myapp
+    volumes:
+      - appdata:/data
+
+  backup:
+    image: offen/docker-volume-backup:v2.43.3
+    environment:
+      BACKUP_FILENAME: "backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+    volumes:
+      - appdata:/backup/data:ro
+      - smb_backup:/archive
+
+volumes:
+  appdata:
+  smb_backup:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//192.168.1.100/docker-backup/gitea"
+      o: "username=backup_user,password=secret,vers=3.0"
+`
+
+	result, err := compose.Infer(input)
+	if err != nil {
+		t.Fatalf("infer: %v", err)
+	}
+
+	if result.Storage == nil {
+		t.Fatal("storage: got nil, want suggestion")
+	}
+	if result.Storage.Type != "smb" {
+		t.Errorf("storage type: got %q, want %q", result.Storage.Type, "smb")
+	}
+	if result.Storage.SMBHost != "192.168.1.100" {
+		t.Errorf("smb_host: got %q, want %q", result.Storage.SMBHost, "192.168.1.100")
+	}
+	if result.Storage.SMBShare != "docker-backup" {
+		t.Errorf("smb_share: got %q, want %q", result.Storage.SMBShare, "docker-backup")
+	}
+	if result.Storage.SMBUser != "backup_user" {
+		t.Errorf("smb_username: got %q, want %q", result.Storage.SMBUser, "backup_user")
+	}
+	if result.Storage.Confidence != "high" {
+		t.Errorf("confidence: got %q, want %q", result.Storage.Confidence, "high")
+	}
+}

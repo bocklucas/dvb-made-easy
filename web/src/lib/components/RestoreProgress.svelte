@@ -18,10 +18,10 @@
   }
 
   function circleColor(status: ProgressEvent['status']): string {
-    if (status === 'done') return 'bg-green-500';
+    if (status === 'done') return 'bg-emerald-500';
     if (status === 'failed' || status === 'error') return 'bg-red-500';
-    if (status === 'in_progress') return 'bg-blue-500';
-    return 'bg-gray-400';
+    if (status === 'in_progress') return 'bg-indigo-500';
+    return 'bg-slate-500';
   }
 </script>
 
@@ -81,12 +81,12 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           {:else}
-            <div class="w-2 h-2 bg-white rounded-full"></div>
+            <div class="w-2 h-2 bg-slate-900 rounded-full"></div>
           {/if}
         </div>
         <!-- Vertical connecting line (not after last) -->
         {#if i < events.length - 1}
-          <div class="w-0.5 flex-1 bg-gray-200 my-1 min-h-4"></div>
+          <div class="w-0.5 flex-1 bg-slate-700 my-1 min-h-4"></div>
         {/if}
       </div>
 
@@ -94,33 +94,33 @@
       <div class="pb-6 flex-1 min-w-0">
         <!-- Volume indicator -->
         {#if event.volume_total && event.volume_total > 0}
-          <div class="text-xs text-gray-400 mb-0.5">
+          <div class="text-xs text-slate-500 mb-0.5">
             Volume {event.volume_index} of {event.volume_total}: <span class="font-mono">{event.volume}</span>
           </div>
         {/if}
         <!-- Step label -->
-        <div class="text-sm font-medium text-gray-900 leading-8">{getLabel(event.step)}</div>
+        <div class="text-sm font-medium text-slate-100 leading-8">{getLabel(event.step)}</div>
 
         <!-- Message -->
         {#if event.message}
-          <div class="text-sm text-gray-500 mt-0.5">{event.message}</div>
+          <div class="text-sm text-slate-500 mt-0.5">{event.message}</div>
         {/if}
 
         <!-- Progress bar for downloading step -->
         {#if event.step === 'downloading' && event.percent !== undefined}
-          <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+          <div class="mt-2 w-full bg-slate-700 rounded-full h-2">
             <div
-              class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              class="bg-indigo-500 h-2 rounded-full transition-all duration-300"
               style="width: {event.percent}%"
             ></div>
           </div>
-          <div class="text-xs text-gray-400 mt-1">{event.percent}%</div>
+          <div class="text-xs text-slate-500 mt-1">{event.percent}%</div>
         {/if}
 
         <!-- Error details -->
         {#if event.details}
           <pre
-            class="mt-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2 font-mono whitespace-pre-wrap break-all">{event.details}</pre>
+            class="mt-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded p-2 font-mono whitespace-pre-wrap break-all">{event.details}</pre>
         {/if}
       </div>
     </div>

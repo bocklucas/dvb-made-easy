@@ -1,23 +1,30 @@
 package restore
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/offen/restore-manager/internal/docker"
 )
 
-func BuildExtractionConfig(filename, stagingVolume, stagingSubdir, targetVolume, passphrase string) docker.OneShotConfig {
-	isEncrypted := strings.HasSuffix(filename, ".gpg")
-	backupPath := "/staging/" + stagingSubdir + "/" + filename
+var safeFilenamePattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 
+func BuildExtractionConfig(filename, stagingVolume, stagingSubdir, targetVolume, passphrase string) (docker.OneShotConfig, error) {
+	if !safeFilenamePattern.MatchString(filename) {
+		return docker.OneShotConfig{}, fmt.Errorf("unsafe backup filename: %q", filename)
+	}
+
+	isEncrypted := strings.HasSuffix(filename, ".gpg")
+
+	env := []string{"BACKUP_FILE=/staging/" + stagingSubdir + "/" + filename}
 	var cmd string
-	var env []string
 
 	if isEncrypted {
-		cmd = `apk add --no-cache gnupg && gpg --batch --passphrase "$GPG_PASSPHRASE" -d ` + backupPath + ` | tar -xz -C /target --strip-components 2`
-		env = []string{"GPG_PASSPHRASE=" + passphrase}
+		cmd = `apk add --no-cache gnupg && gpg --batch --passphrase "$GPG_PASSPHRASE" -d "$BACKUP_FILE" | tar -xz -C /target --strip-components 2`
+		env = append(env, "GPG_PASSPHRASE="+passphrase)
 	} else {
-		cmd = "tar -xzf " + backupPath + " -C /target --strip-components 2"
+		cmd = `tar -xzf "$BACKUP_FILE" -C /target --strip-components 2`
 	}
 
 	return docker.OneShotConfig{
@@ -28,5 +35,5 @@ func BuildExtractionConfig(filename, stagingVolume, stagingSubdir, targetVolume,
 			{Source: stagingVolume, Target: "/staging", ReadOnly: true},
 			{Source: targetVolume, Target: "/target", ReadOnly: false},
 		},
-	}
+	}, nil
 }

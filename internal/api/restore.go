@@ -129,23 +129,28 @@ func (s *Server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	token := "rst-" + uuid.New().String()
 
 	restoreReq := restore.RestoreRequest{
-		Token:        token,
-		Project:      project.Name,
-		Services:     services,
-		DependsOn:    dependsOn,
-		VolumeName:   volumeName,
-		BackupKey:    req.BackupKey,
-		Mode:         mode,
-		TargetName:   req.TargetVolumeName,
-		Passphrase:   req.Passphrase,
-		ContainerIDs: req.ContainerIDs,
-		BackupSize:   backupSize,
+		Token:          token,
+		Project:        project.Name,
+		StackName:      project.StackName(),
+		Services:       services,
+		DependsOn:      dependsOn,
+		VolumeName:     volumeName,
+		BackupKey:      req.BackupKey,
+		Mode:           mode,
+		TargetName:     req.TargetVolumeName,
+		Passphrase:     req.Passphrase,
+		ContainerIDs:   req.ContainerIDs,
+		BackupSize:     backupSize,
+		DeploymentMode: project.DeploymentMode,
 	}
 
 	s.broadcaster.Register(token)
 
 	if s.dockerClient != nil {
 		orch := restore.NewOrchestrator(s.dockerClient, s.broadcaster)
+		if s.stagingDir != "" {
+			orch.SetStagingDir(s.stagingDir)
+		}
 		go orch.Run(context.Background(), restoreReq, backend)
 	}
 

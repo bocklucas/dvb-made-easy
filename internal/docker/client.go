@@ -20,6 +20,16 @@ type ContainerInfo struct {
 	Labels  map[string]string
 }
 
+type ServiceInfo struct {
+	ID           string
+	Name         string
+	Stack        string
+	Service      string
+	Replicas     uint64
+	IsReplicated bool
+	Version      uint64
+}
+
 type OneShotConfig struct {
 	Image      string
 	Cmd        []string

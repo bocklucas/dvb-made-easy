@@ -48,8 +48,8 @@ func (s *Server) handleComposeRestore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mode := restore.RestoreMode(req.Mode)
-	if mode != restore.ModeNewVolume && mode != restore.ModeFullStack {
-		http.Error(w, `{"error":"mode must be new_volume or full_stack"}`, http.StatusBadRequest)
+	if mode != restore.ModeNewVolume {
+		http.Error(w, `{"error":"mode must be new_volume"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -118,33 +118,34 @@ func (s *Server) handleComposeRestore(w http.ResponseWriter, r *http.Request) {
 
 	volumes := make([]restore.VolumeRestore, 0, len(req.Volumes))
 	for _, v := range req.Volumes {
-		targetName := v.TargetVolumeName
-		if mode == restore.ModeFullStack && targetName == "" {
-			targetName = v.VolumeName
-		}
 		volumes = append(volumes, restore.VolumeRestore{
 			VolumeName: v.VolumeName,
 			BackupKey:  v.BackupKey,
 			Passphrase: v.Passphrase,
-			TargetName: targetName,
+			TargetName: v.TargetVolumeName,
 			BackupSize: sizeByKey[v.BackupKey],
 		})
 	}
 
 	composeReq := restore.ComposeRestoreRequest{
-		Token:        token,
-		Project:      project.Name,
-		Services:     services,
-		DependsOn:    dependsOn,
-		Mode:         mode,
-		Volumes:      volumes,
-		ContainerIDs: req.ContainerIDs,
+		Token:          token,
+		Project:        project.Name,
+		StackName:      project.StackName(),
+		Services:       services,
+		DependsOn:      dependsOn,
+		Mode:           mode,
+		Volumes:        volumes,
+		ContainerIDs:   req.ContainerIDs,
+		DeploymentMode: project.DeploymentMode,
 	}
 
 	s.broadcaster.Register(token)
 
 	if s.dockerClient != nil {
 		orch := restore.NewOrchestrator(s.dockerClient, s.broadcaster)
+		if s.stagingDir != "" {
+			orch.SetStagingDir(s.stagingDir)
+		}
 		go orch.RunCompose(context.Background(), composeReq, backend)
 	}
 

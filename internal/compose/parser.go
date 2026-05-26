@@ -8,12 +8,21 @@ import (
 )
 
 type ParseResult struct {
+	Name                 string
 	Volumes              []VolumeMapping
 	Services             []string
 	DependsOn            map[string][]string
 	BackupJobs           []BackupJob
 	BackupServiceEnv     map[string]string // env vars from the first offen backup service found
 	BackupServiceVolumes []string          // raw volume mount strings from the backup service
+	VolumeDefs           map[string]VolumeDef
+	BackupImage          string            // image of the first backup service found
+	StopServices         []string          // list of services that have the stop label
+}
+
+type VolumeDef struct {
+	Driver     string
+	DriverOpts map[string]string
 }
 
 type VolumeMapping struct {
@@ -29,8 +38,14 @@ type BackupJob struct {
 }
 
 type composeFile struct {
+	Name     string                `yaml:"name"`
 	Services map[string]serviceDef `yaml:"services"`
-	Volumes  map[string]any        `yaml:"volumes"`
+	Volumes  map[string]volumeDef  `yaml:"volumes"`
+}
+
+type volumeDef struct {
+	Driver     string            `yaml:"driver"`
+	DriverOpts map[string]string `yaml:"driver_opts"`
 }
 
 type serviceDef struct {
@@ -38,6 +53,31 @@ type serviceDef struct {
 	Volumes     []any        `yaml:"volumes"`
 	DependsOn   dependsOnDef `yaml:"depends_on"`
 	Environment envDef       `yaml:"environment"`
+	Labels      labelsDef    `yaml:"labels"`
+}
+
+type labelsDef struct {
+	Labels map[string]string
+}
+
+func (l *labelsDef) UnmarshalYAML(node *yaml.Node) error {
+	l.Labels = make(map[string]string)
+	switch node.Kind {
+	case yaml.MappingNode:
+		return node.Decode(&l.Labels)
+	case yaml.SequenceNode:
+		var items []string
+		if err := node.Decode(&items); err != nil {
+			return err
+		}
+		for _, item := range items {
+			k, v, _ := strings.Cut(item, "=")
+			l.Labels[k] = v
+		}
+		return nil
+	default:
+		return nil
+	}
 }
 
 type envDef struct {
@@ -98,7 +138,16 @@ func Parse(content string) (*ParseResult, error) {
 	}
 
 	result := &ParseResult{
-		DependsOn: make(map[string][]string),
+		Name:       cf.Name,
+		DependsOn:  make(map[string][]string),
+		VolumeDefs: make(map[string]VolumeDef),
+	}
+
+	for name, v := range cf.Volumes {
+		result.VolumeDefs[name] = VolumeDef{
+			Driver:     v.Driver,
+			DriverOpts: v.DriverOpts,
+		}
 	}
 
 	for svcName, svc := range cf.Services {
@@ -117,12 +166,20 @@ func Parse(content string) (*ParseResult, error) {
 					result.Volumes = append(result.Volumes, vm)
 				}
 			}
-		} else if result.BackupServiceEnv == nil {
-			// Capture env and volume mounts from the first backup service encountered.
-			result.BackupServiceEnv = svc.Environment.Vars
-			for _, vol := range svc.Volumes {
-				if s, ok := vol.(string); ok {
-					result.BackupServiceVolumes = append(result.BackupServiceVolumes, s)
+			if val, ok := svc.Labels.Labels["docker-volume-backup.stop-during-backup"]; ok && val == "true" {
+				result.StopServices = append(result.StopServices, svcName)
+			}
+		} else {
+			if result.BackupImage == "" {
+				result.BackupImage = svc.Image
+			}
+			if result.BackupServiceEnv == nil {
+				// Capture env and volume mounts from the first backup service encountered.
+				result.BackupServiceEnv = svc.Environment.Vars
+				for _, vol := range svc.Volumes {
+					if s, ok := vol.(string); ok {
+						result.BackupServiceVolumes = append(result.BackupServiceVolumes, s)
+					}
 				}
 			}
 		}
@@ -132,10 +189,52 @@ func Parse(content string) (*ParseResult, error) {
 		}
 	}
 
+	// Ensure all top-level named volumes appear in result.Volumes, even if they
+	// are only mounted in backup services. Scan all services to find a mount.
+	captured := make(map[string]bool, len(result.Volumes))
+	for _, v := range result.Volumes {
+		captured[v.Name] = true
+	}
+	for volName := range topLevelVolumes {
+		if captured[volName] {
+			continue
+		}
+		if vm, ok := findVolumeMountInServices(volName, cf.Services, topLevelVolumes); ok {
+			result.Volumes = append(result.Volumes, vm)
+		}
+	}
+
 	return result, nil
 }
 
 const ofenImagePrefix = "offen/docker-volume-backup"
+
+// findVolumeMountInServices scans all services to find where a named volume is
+// mounted. It prefers non-backup services; if none mount the volume it falls
+// back to the first backup service that does.
+func findVolumeMountInServices(volName string, services map[string]serviceDef, topLevel map[string]bool) (VolumeMapping, bool) {
+	var fallback *VolumeMapping
+	for svcName, svc := range services {
+		isBackup := strings.HasPrefix(svc.Image, ofenImagePrefix)
+		for _, vol := range svc.Volumes {
+			vm, ok := parseVolumeEntry(vol, svcName, topLevel)
+			if !ok || vm.Name != volName {
+				continue
+			}
+			if !isBackup {
+				return vm, true
+			}
+			if fallback == nil {
+				cp := vm
+				fallback = &cp
+			}
+		}
+	}
+	if fallback != nil {
+		return *fallback, true
+	}
+	return VolumeMapping{}, false
+}
 
 func parseBackupJob(svcName string, svc serviceDef, topLevel map[string]bool) (BackupJob, bool) {
 	if !strings.HasPrefix(svc.Image, ofenImagePrefix) {

@@ -4,7 +4,10 @@
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-2-FF3E00.svg?style=flat-square&logo=svelte)](https://kit.svelte.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC.svg?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
 [![Docker](https://img.shields.io/badge/Docker-Engine_SDK-2496ED.svg?style=flat-square&logo=docker)](https://www.docker.com)
-[![SMB/CIFS Supported](https://img.shields.io/badge/Storage-Local%20%7C%20SMB-brightgreen.svg?style=flat-square)](#)
+[![Storage: Local & SMB](https://img.shields.io/badge/Storage-Local%20%7C%20SMB-brightgreen?style=flat-square)](#)
+[![Storage: S3 & Azure](https://img.shields.io/badge/Cloud-S3%20%7C%20Azure-blue?style=flat-square)](#)
+[![Storage: WebDAV & SFTP](https://img.shields.io/badge/Network-WebDAV%20%7C%20SFTP-orange?style=flat-square)](#)
+[![Storage: Dropbox & GDrive](https://img.shields.io/badge/SaaS-Dropbox%20%7C%20GDrive-9cf?style=flat-square)](#)
 
 **Offen Made Easy** (also known as the *Offen Restore Manager*) is a lightweight, self-hosted web application and orchestration engine designed to automate the process of restoring Docker volume backups created by the popular [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup) utility.
 
@@ -48,46 +51,76 @@ To restore a volume backup manually, a developer must go through this complex, e
     *   Survives container restarts using an **AES-256-GCM encrypted local manifest storage** (`manifest.enc`).
 *   **⚡ Automated Volume Restore**
     *   Create a new volume (e.g. `{volume}_restored_{timestamp}`) and extract the backup directly into it. Extremely safe for inspecting data before replacing production volumes.
+*   **🐳 Native Docker Swarm & Compose Support**
+    *   Orchestrates scaling down of Docker Swarm services (or stopping Compose containers) to safely perform restores without database corruption.
+    *   Cleans and prepares target volumes, performs the restore, and automatically restores/scales up services to their previous configuration when done.
 *   **📡 Real-Time Progress Streaming**
     *   Leverages Server-Sent Events (SSE) to broadcast live percentages, logs, container transitions, and extraction status.
 *   **💾 Reusable Source & Storage Backends**
-    *   Configure your Git repositories, Portainer credentials, or SMB/Local storage options once and share them across multiple backup/restore projects.
+    *   Configure Git repositories or Portainer credentials once and reuse them.
+    *   Supports a wide array of storage backends: **Local Directory**, **SMB/CIFS**, **AWS S3 / MinIO**, **WebDAV (Nextcloud)**, **SFTP**, **Azure Blob Storage**, **Dropbox**, and **Google Drive**.
+*   **🛠️ Sidecar Backup Generator (Configuration Wizard)**
+    *   Easily generate and inject the `offen/docker-volume-backup` sidecar service definition into your existing `docker-compose.yml` file.
+    *   Configure schedule (cron), retention policies, GPG encryption passphrases, service downtime orchestration (labels to stop containers during backups), and automatic SMB volume mounting.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-The easiest way to get Offen Made Easy running is to clone this repository and start the pre-configured Docker Compose stack.
-
-### 1. Clone the Repository
-Clone the repository to your host machine and navigate into the project directory:
+Get up and running with a single command — no cloning required:
 
 ```bash
-# Clone the repository
-git clone https://github.com/bocklucas/offen-made-easy.git
-
-# CD into the directory
-cd offen-made-easy
+curl -sL https://raw.githubusercontent.com/bocklucas/offen-made-easy/main/docker-compose.prod.yml -o docker-compose.yml && docker compose up -d
 ```
 
-### 2. Start the Stack
-Ensure you have Docker and Docker Compose installed. Since the backend needs access to the Docker socket `/var/run/docker.sock`, export your local Docker group ID (`DOCKER_GID`) to ensure the container has the correct socket permissions, then start the stack:
+Or run it directly without a compose file (requires creating the staging volume for temp downloads):
 
 ```bash
+docker volume create offen-restore-staging
+
+docker run -d -p 7331:7331 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v offen-config:/app/config \
+  -v offen-restore-staging:/staging \
+  ghcr.io/bocklucas/offen-made-easy:latest
+```
+
+Once running, open [http://localhost:7331](http://localhost:7331) in your browser.
+
+> [!TIP]
+> If you get a "permission denied" error for the Docker socket, add your Docker group ID:
+> ```bash
+> docker run -d -p 7331:7331 \
+>   -v /var/run/docker.sock:/var/run/docker.sock \
+>   -v offen-config:/app/config \
+>   -v offen-restore-staging:/staging \
+>   --group-add $(getent group docker | cut -d: -f3) \
+>   ghcr.io/bocklucas/offen-made-easy:latest
+> ```
+
+---
+
+## 🛠️ Local Development (Docker Compose)
+
+To build and run from source using Docker Compose:
+
+```bash
+git clone https://github.com/bocklucas/offen-made-easy.git
+cd offen-made-easy
+
 # Export your Docker group ID (optional but recommended for permissions)
 export DOCKER_GID=$(getent group docker | cut -d: -f3)
 
-# Start the stack
 docker compose up -d
 ```
 
 Once the stack is running, navigate to:
-*   **Web Console (GUI)**: [http://localhost:5173](http://localhost:5173)
-*   **API Documentation / Health**: [http://localhost:8080/api/health](http://localhost:8080/api/health)
+*   **Web Console (GUI)**: [http://localhost:7331](http://localhost:7331)
+*   **API Documentation / Health**: [http://localhost:7331/api/health](http://localhost:7331/api/health)
 
 ---
 
-## 🛠️ Local Development (No Docker)
+## 🧑‍💻 Local Development (No Docker)
 
 If you wish to run the backend and frontend services locally outside of Docker containers:
 
@@ -98,8 +131,8 @@ If you wish to run the backend and frontend services locally outside of Docker c
 
 ### 1. Start the Go Backend
 ```bash
-# Set a custom folder for the encrypted database
-go run cmd/server/main.go --port 8080 --config-dir ./config-dev
+# Set custom folders for the encrypted database and local staging
+go run cmd/server/main.go --port 7331 --config-dir ./config-dev --staging-dir ./staging-dev
 ```
 
 ### 2. Start the Frontend Dev Server
@@ -108,7 +141,7 @@ cd web
 npm install
 npm run dev
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser. The Vite development proxy will forward `/api` requests to the Go backend on port `8080`.
+Open [http://localhost:5173](http://localhost:5173) in your browser. The Vite development proxy will forward `/api` requests to the Go backend on port `7331`.
 
 ---
 
@@ -122,7 +155,7 @@ Offen Made Easy keeps your credentials (like SMB credentials, Git auth tokens, a
 
 ### 2. Docker Socket Access
 *   The application requires access to the Docker socket `/var/run/docker.sock` to check container states and spin up extraction helper containers.
-*   Ensure that only trusted administrators have network access to port `5173` and `8080`.
+*   Ensure that only trusted administrators have network access to port `7331` (and `5173` if running the dev server).
 
 ---
 

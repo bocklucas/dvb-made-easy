@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -26,14 +27,13 @@ type GitSource struct {
 	SSHPrivateKey    string `json:"ssh_private_key,omitempty"`
 }
 
-// Clone clones a repo (bare) and reads the compose file at the given path.
-// Returns compose content and commit hash.
-func Clone(cacheDir string, source GitSource) (content string, commitHash string, err error) {
+// ensureRepo ensures that the repository is cloned locally and updated.
+func ensureRepo(cacheDir string, source GitSource) (*git.Repository, error) {
 	repoDir := repoPath(cacheDir, source.RepoURL)
 
 	auth, err := authMethod(source)
 	if err != nil {
-		return "", "", fmt.Errorf("auth: %w", err)
+		return nil, fmt.Errorf("auth: %w", err)
 	}
 
 	refName := plumbing.NewBranchReferenceName(source.Branch)
@@ -46,45 +46,44 @@ func Clone(cacheDir string, source GitSource) (content string, commitHash string
 		NoCheckout:    true,
 	})
 	if err == git.ErrRepositoryAlreadyExists {
-		return Sync(cacheDir, source)
+		repo, err = git.PlainOpen(repoDir)
+		if err != nil {
+			return nil, fmt.Errorf("open: %w", err)
+		}
+		err = repo.Fetch(&git.FetchOptions{
+			Auth: auth,
+			RefSpecs: []config.RefSpec{
+				config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/heads/%s", source.Branch, source.Branch)),
+			},
+			Force: true,
+		})
+		if err != nil && err != git.NoErrAlreadyUpToDate {
+			return nil, fmt.Errorf("fetch: %w", err)
+		}
+		return repo, nil
 	}
 	if err != nil {
-		return "", "", fmt.Errorf("clone: %w", err)
+		return nil, fmt.Errorf("clone: %w", err)
 	}
 
+	return repo, nil
+}
+
+// Clone clones a repo (bare) and reads the compose file at the given path.
+// Returns compose content and commit hash.
+func Clone(cacheDir string, source GitSource) (content string, commitHash string, err error) {
+	repo, err := ensureRepo(cacheDir, source)
+	if err != nil {
+		return "", "", err
+	}
+	refName := plumbing.NewBranchReferenceName(source.Branch)
 	return readFile(repo, refName, source.FilePath)
 }
 
 // Sync fetches the latest from the repo and reads the compose file.
 // Returns compose content and commit hash.
 func Sync(cacheDir string, source GitSource) (content string, commitHash string, err error) {
-	repoDir := repoPath(cacheDir, source.RepoURL)
-
-	// If the repo doesn't exist locally, fall back to Clone.
-	repo, err := git.PlainOpen(repoDir)
-	if err != nil {
-		return Clone(cacheDir, source)
-	}
-
-	auth, err := authMethod(source)
-	if err != nil {
-		return "", "", fmt.Errorf("auth: %w", err)
-	}
-
-	refName := plumbing.NewBranchReferenceName(source.Branch)
-
-	err = repo.Fetch(&git.FetchOptions{
-		Auth: auth,
-		RefSpecs: []config.RefSpec{
-			config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/heads/%s", source.Branch, source.Branch)),
-		},
-		Force: true,
-	})
-	if err != nil && err != git.NoErrAlreadyUpToDate {
-		return "", "", fmt.Errorf("fetch: %w", err)
-	}
-
-	return readFile(repo, refName, source.FilePath)
+	return Clone(cacheDir, source)
 }
 
 // readFile reads a file from the HEAD of the given branch reference.
@@ -148,6 +147,45 @@ func authMethod(source GitSource) (transport.AuthMethod, error) {
 		}, nil
 	}
 	return nil, nil
+}
+
+// Browse clones or fetches a repo (bare) and lists all potential compose files.
+func Browse(cacheDir string, source GitSource) ([]string, error) {
+	repo, err := ensureRepo(cacheDir, source)
+	if err != nil {
+		return nil, err
+	}
+
+	refName := plumbing.NewBranchReferenceName(source.Branch)
+	ref, err := repo.Reference(refName, true)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ref %s: %w", refName, err)
+	}
+
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("tree: %w", err)
+	}
+
+	var files []string
+	fileIter := tree.Files()
+	err = fileIter.ForEach(func(f *object.File) error {
+		lower := strings.ToLower(f.Name)
+		if strings.HasSuffix(lower, ".yml") || strings.HasSuffix(lower, ".yaml") || strings.Contains(filepath.Base(lower), "compose") {
+			files = append(files, f.Name)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("iterate files: %w", err)
+	}
+
+	return files, nil
 }
 
 // CleanCache removes the cached bare repo for a given URL.

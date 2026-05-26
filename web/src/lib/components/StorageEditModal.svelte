@@ -2,6 +2,7 @@
   import type { CredentialResponse, Credentials, SavedBackend } from '$lib/types';
   import { updateCredentials, listSavedBackends, createSavedBackend } from '$lib/api';
   import { onMount } from 'svelte';
+  import CredentialFields from '$lib/components/CredentialFields.svelte';
 
   interface Props {
     projectId: string;
@@ -12,38 +13,27 @@
 
   let { projectId, existing, onClose, onSaved }: Props = $props();
 
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let backendType = $state<'local' | 'smb'>(existing.type);
+  function getInitialCredentials(): Credentials {
+    return {
+      type: existing.type,
+      local: existing.local ? { ...existing.local } : undefined,
+      smb: existing.smb ? { ...existing.smb, password: '' } : undefined,
+      s3: existing.s3 ? { ...existing.s3, secret_key: '' } : undefined,
+      webdav: existing.webdav ? { ...existing.webdav, password: '' } : undefined,
+      azure: existing.azure ? { ...existing.azure, connection_string: '' } : undefined,
+      dropbox: existing.dropbox ? { ...existing.dropbox, access_token: '', app_secret: '' } : undefined,
+      gdrive: existing.gdrive ? { ...existing.gdrive, credentials: '' } : undefined,
+      sftp: existing.sftp ? { ...existing.sftp, password: '', private_key: '' } : undefined
+    };
+  }
+
+  let credentials = $state<Credentials>(getInitialCredentials());
 
   // Saved backends
   let savedBackends = $state<SavedBackend[]>([]);
   let selectedSavedBackendId = $state('');
   let saveAsBackend = $state(false);
   let savedBackendName = $state('');
-
-  // Local fields — pre-filled from existing
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let localPath = $state(existing.local?.path ?? '');
-
-  // SMB fields — pre-filled from existing (password always blank)
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let smbHost = $state(existing.smb?.host ?? '');
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let smbShare = $state(existing.smb?.share ?? '');
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let smbPath = $state(existing.smb?.path ?? '');
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let smbUsername = $state(existing.smb?.username ?? '');
-  let smbPassword = $state('');
-  // eslint-disable-next-line svelte/no-unused-svelte-ignore
-  // svelte-ignore state_referenced_locally
-  let smbPort = $state(existing.smb?.port ?? 445);
 
   let error = $state('');
   let testSuccess = $state(false);
@@ -58,8 +48,8 @@
     }
   });
 
-  function selectType(type: 'local' | 'smb') {
-    backendType = type;
+  function selectType(type: Credentials['type']) {
+    credentials.type = type;
     error = '';
     testSuccess = false;
     selectedSavedBackendId = '';
@@ -73,43 +63,146 @@
     testSuccess = false;
     saveAsBackend = false;
 
-    backendType = backend.credentials.type;
-    if (backend.credentials.type === 'local' && backend.credentials.local) {
-      localPath = backend.credentials.local.path;
-    } else if (backend.credentials.type === 'smb' && backend.credentials.smb) {
-      smbHost = backend.credentials.smb.host;
-      smbShare = backend.credentials.smb.share;
-      smbPath = backend.credentials.smb.path ?? '';
-      smbUsername = backend.credentials.smb.username ?? '';
-      smbPassword = backend.credentials.smb.password ?? '';
-      smbPort = backend.credentials.smb.port ?? 445;
-    }
+    credentials = {
+      type: backend.credentials.type,
+      local: backend.credentials.local ? { ...backend.credentials.local } : undefined,
+      smb: backend.credentials.smb ? { ...backend.credentials.smb } : undefined,
+      s3: backend.credentials.s3 ? { ...backend.credentials.s3 } : undefined,
+      webdav: backend.credentials.webdav ? { ...backend.credentials.webdav } : undefined,
+      azure: backend.credentials.azure ? { ...backend.credentials.azure } : undefined,
+      dropbox: backend.credentials.dropbox ? { ...backend.credentials.dropbox } : undefined,
+      gdrive: backend.credentials.gdrive ? { ...backend.credentials.gdrive } : undefined,
+      sftp: backend.credentials.sftp ? { ...backend.credentials.sftp } : undefined,
+      saved_backend_id: selectedSavedBackendId
+    };
   }
 
   function buildCreds(): Credentials | null {
-    if (backendType === 'local') {
-      if (!localPath.trim()) {
+    if (credentials.type === 'local' && credentials.local) {
+      if (!credentials.local.path.trim()) {
         error = 'Enter a local path';
         return null;
       }
-      return { type: 'local', local: { path: localPath.trim() } };
-    } else {
-      if (!smbHost.trim() || !smbShare.trim()) {
+      return { type: 'local', local: { path: credentials.local.path.trim() } };
+    }
+    
+    if (credentials.type === 'smb' && credentials.smb) {
+      if (!credentials.smb.host.trim() || !credentials.smb.share.trim()) {
         error = 'Host and share are required';
         return null;
       }
       return {
         type: 'smb',
         smb: {
-          host: smbHost.trim(),
-          share: smbShare.trim(),
-          path: smbPath.trim(),
-          username: smbUsername.trim(),
-          password: smbPassword,
-          port: smbPort
+          host: credentials.smb.host.trim(),
+          share: credentials.smb.share.trim(),
+          path: credentials.smb.path.trim(),
+          username: credentials.smb.username.trim(),
+          password: credentials.smb.password,
+          port: credentials.smb.port
         }
       };
     }
+    
+    if (credentials.type === 's3' && credentials.s3) {
+      if (!credentials.s3.bucket.trim()) {
+        error = 'Bucket name is required';
+        return null;
+      }
+      return {
+        type: 's3',
+        s3: {
+          bucket: credentials.s3.bucket.trim(),
+          access_key: credentials.s3.access_key.trim(),
+          secret_key: credentials.s3.secret_key,
+          endpoint: credentials.s3.endpoint.trim(),
+          region: credentials.s3.region.trim(),
+          storage_class: credentials.s3.storage_class.trim()
+        }
+      };
+    }
+    
+    if (credentials.type === 'webdav' && credentials.webdav) {
+      if (!credentials.webdav.url.trim()) {
+        error = 'WebDAV URL is required';
+        return null;
+      }
+      return {
+        type: 'webdav',
+        webdav: {
+          url: credentials.webdav.url.trim(),
+          username: credentials.webdav.username.trim(),
+          password: credentials.webdav.password,
+          path: credentials.webdav.path.trim(),
+          insecure: credentials.webdav.insecure
+        }
+      };
+    }
+    
+    if (credentials.type === 'azure' && credentials.azure) {
+      if (!credentials.azure.container.trim()) {
+        error = 'Container name is required';
+        return null;
+      }
+      return {
+        type: 'azure',
+        azure: {
+          connection_string: credentials.azure.connection_string,
+          container: credentials.azure.container.trim()
+        }
+      };
+    }
+    
+    if (credentials.type === 'dropbox' && credentials.dropbox) {
+      if (!credentials.dropbox.app_key.trim()) {
+        error = 'App Key is required';
+        return null;
+      }
+      return {
+        type: 'dropbox',
+        dropbox: {
+          access_token: credentials.dropbox.access_token,
+          app_key: credentials.dropbox.app_key.trim(),
+          app_secret: credentials.dropbox.app_secret,
+          remote_path: credentials.dropbox.remote_path.trim()
+        }
+      };
+    }
+    
+    if (credentials.type === 'gdrive' && credentials.gdrive) {
+      if (!credentials.gdrive.folder_id.trim()) {
+        error = 'Folder ID is required';
+        return null;
+      }
+      return {
+        type: 'gdrive',
+        gdrive: {
+          folder_id: credentials.gdrive.folder_id.trim(),
+          credentials: credentials.gdrive.credentials?.trim(),
+          impersonate: credentials.gdrive.impersonate.trim()
+        }
+      };
+    }
+    
+    if (credentials.type === 'sftp' && credentials.sftp) {
+      if (!credentials.sftp.host.trim() || !credentials.sftp.user.trim()) {
+        error = 'Host and user are required';
+        return null;
+      }
+      return {
+        type: 'sftp',
+        sftp: {
+          host: credentials.sftp.host.trim(),
+          user: credentials.sftp.user.trim(),
+          port: credentials.sftp.port,
+          password: credentials.sftp.password,
+          private_key: credentials.sftp.private_key,
+          remote_path: credentials.sftp.remote_path.trim()
+        }
+      };
+    }
+
+    return null;
   }
 
   async function handleTestConnection() {
@@ -167,13 +260,13 @@
   aria-modal="true"
   aria-labelledby="storage-edit-title"
 >
-  <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+  <div class="bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
     <!-- Header -->
-    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-      <h2 id="storage-edit-title" class="text-lg font-semibold text-gray-900">Edit Storage</h2>
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
+      <h2 id="storage-edit-title" class="text-lg font-semibold text-slate-100">Edit Storage</h2>
       <button
         onclick={onClose}
-        class="text-gray-400 hover:text-gray-600 transition-colors"
+        class="text-slate-500 hover:text-slate-400 transition-all duration-200 active:scale-[0.98]"
         aria-label="Close"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,14 +284,14 @@
     <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5">
       {#if savedBackends.length > 0}
         <div>
-          <label for="edit-saved-backend" class="block text-sm font-medium text-gray-700 mb-2">
+          <label for="edit-saved-backend" class="block text-sm font-medium text-slate-300 mb-2">
             Use a saved backend
           </label>
           <select
             id="edit-saved-backend"
             bind:value={selectedSavedBackendId}
             onchange={applySavedBackend}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-900 text-slate-100"
           >
             <option value="">Configure manually...</option>
             {#each savedBackends as backend}
@@ -210,145 +303,67 @@
 
       <!-- Type selector -->
       <div>
-        <p class="text-sm font-medium text-gray-700 mb-3">Storage Backend</p>
-        <div class="flex gap-3">
-          <button
-            onclick={() => selectType('local')}
-            class="flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors {backendType === 'local' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}"
-          >
-            Local
-          </button>
-          <button
-            onclick={() => selectType('smb')}
-            class="flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors {backendType === 'smb' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}"
-          >
-            SMB / Network Share
-          </button>
+        <p class="text-sm font-medium text-slate-300 mb-3">Storage Backend</p>
+        <div class="grid grid-cols-2 gap-2">
+          {#each [
+            { type: 'local', name: 'Local Path', beta: false },
+            { type: 'smb', name: 'SMB Share', beta: false },
+            { type: 's3', name: 'AWS S3', beta: true },
+            { type: 'webdav', name: 'WebDAV', beta: true },
+            { type: 'azure', name: 'Azure Blob', beta: true },
+            { type: 'dropbox', name: 'Dropbox', beta: true },
+            { type: 'gdrive', name: 'Google Drive', beta: true },
+            { type: 'sftp', name: 'SFTP / SSH', beta: true }
+          ] as opt}
+            <button
+              onclick={() => selectType(opt.type as any)}
+              class="py-2 px-3 rounded-lg border-2 text-sm font-medium transition-colors text-left flex items-center justify-between {credentials.type === opt.type ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-slate-700/50 text-slate-400 hover:border-slate-600'}"
+            >
+              <span>{opt.name}</span>
+              {#if opt.beta}
+                <span class="text-[10px] px-1 py-0.5 bg-yellow-100 text-yellow-800 rounded font-semibold uppercase tracking-wider">Beta</span>
+              {/if}
+            </button>
+          {/each}
         </div>
       </div>
 
-      {#if backendType === 'local'}
-        <div>
-          <label for="edit-local-path" class="block text-sm font-medium text-gray-700 mb-2">
-            Backup Path
-          </label>
-          <input
-            id="edit-local-path"
-            type="text"
-            bind:value={localPath}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="/mnt/backups"
-          />
-        </div>
-      {:else}
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label for="edit-smb-host" class="block text-sm font-medium text-gray-700 mb-2">
-              Host
-            </label>
-            <input
-              id="edit-smb-host"
-              type="text"
-              bind:value={smbHost}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="192.168.1.10"
-            />
-          </div>
-          <div>
-            <label for="edit-smb-share" class="block text-sm font-medium text-gray-700 mb-2">
-              Share
-            </label>
-            <input
-              id="edit-smb-share"
-              type="text"
-              bind:value={smbShare}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="backups"
-            />
-          </div>
-          <div>
-            <label for="edit-smb-path" class="block text-sm font-medium text-gray-700 mb-2">
-              Path
-            </label>
-            <input
-              id="edit-smb-path"
-              type="text"
-              bind:value={smbPath}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="subfolder"
-            />
-          </div>
-          <div>
-            <label for="edit-smb-port" class="block text-sm font-medium text-gray-700 mb-2">
-              Port
-            </label>
-            <input
-              id="edit-smb-port"
-              type="number"
-              bind:value={smbPort}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="445"
-            />
-          </div>
-          <div>
-            <label for="edit-smb-username" class="block text-sm font-medium text-gray-700 mb-2">
-              Username
-            </label>
-            <input
-              id="edit-smb-username"
-              type="text"
-              bind:value={smbUsername}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="user"
-            />
-          </div>
-          <div>
-            <label for="edit-smb-password" class="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              id="edit-smb-password"
-              type="password"
-              bind:value={smbPassword}
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter to change"
-            />
-          </div>
-        </div>
-      {/if}
+      <div class="space-y-4">
+        <CredentialFields bind:credentials={credentials} isEdit={true} />
+      </div>
 
       {#if error}
-        <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
           {error}
         </div>
       {/if}
 
       {#if testSuccess}
-        <div class="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-sm">
           Connection successful.
         </div>
       {/if}
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-700/50">
       <button
         onclick={onClose}
-        class="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        class="px-4 py-2 text-sm text-slate-300 border border-slate-600 rounded-lg hover:bg-slate-800/50 transition-all duration-200 active:scale-[0.98]"
       >
         Cancel
       </button>
       <button
         onclick={handleTestConnection}
         disabled={testing || saving}
-        class="px-4 py-2 text-sm border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:opacity-50 rounded-lg font-medium transition-colors"
+        class="px-4 py-2 text-sm border border-indigo-600 text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-50 rounded-lg font-medium transition-all duration-200 active:scale-[0.98]"
       >
         {testing ? 'Testing...' : 'Test Connection'}
       </button>
       <button
         onclick={handleSave}
         disabled={!testSuccess || saving}
-        class="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-4 py-2 text-sm text-white bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {saving ? 'Saving...' : 'Save'}
       </button>

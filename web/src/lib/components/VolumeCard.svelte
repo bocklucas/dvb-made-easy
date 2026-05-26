@@ -59,14 +59,14 @@
   }
 </script>
 
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+<div class="bg-slate-900 rounded-lg shadow-sm border border-slate-700/50 overflow-hidden">
   <div class="px-4 py-3 flex items-center justify-between">
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
-        <span class="font-medium text-gray-900">{volume.name}</span>
+        <span class="font-medium text-slate-100">{volume.name}</span>
         {#if hasPassphrase}
           <span
-            class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5"
+            class="inline-flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5"
             title="Passphrase stored"
           >
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,7 @@
           </span>
         {:else}
           <span
-            class="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5"
+            class="inline-flex items-center gap-1 text-xs text-slate-500 bg-slate-800/50 border border-slate-700/50 rounded px-1.5 py-0.5"
             title="No passphrase stored"
           >
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +88,7 @@
           </span>
         {/if}
       </div>
-      <div class="text-sm text-gray-500 mt-0.5">
+      <div class="text-sm text-slate-500 mt-0.5">
         {volume.compose_service} → <span class="font-mono">{volume.compose_mount_path}</span>
       </div>
     </div>
@@ -96,14 +96,14 @@
       {#if hasPassphrase}
         <button
           onclick={() => (showPassphraseForm = !showPassphraseForm)}
-          class="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-gray-600"
+          class="text-xs px-2 py-1 border border-slate-600 rounded hover:bg-slate-800/50 transition-colors text-slate-400"
           disabled={passphraseLoading}
         >
           Change
         </button>
         <button
           onclick={handleClearPassphrase}
-          class="text-xs px-2 py-1 border border-red-200 rounded hover:bg-red-50 transition-colors text-red-600"
+          class="text-xs px-2 py-1 border border-red-500/20 rounded hover:bg-red-500/10 transition-colors text-red-400"
           disabled={passphraseLoading}
         >
           {passphraseLoading ? '...' : 'Clear'}
@@ -111,14 +111,14 @@
       {:else}
         <button
           onclick={() => (showPassphraseForm = !showPassphraseForm)}
-          class="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-gray-600"
+          class="text-xs px-2 py-1 border border-slate-600 rounded hover:bg-slate-800/50 transition-colors text-slate-400"
         >
           Set Passphrase
         </button>
       {/if}
       <button
         onclick={() => (expanded = !expanded)}
-        class="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-gray-700"
+        class="text-sm px-3 py-1.5 border border-slate-600 rounded hover:bg-slate-800/50 transition-colors text-slate-300"
       >
         {expanded ? 'Hide Backups' : 'Browse Backups'}
       </button>
@@ -126,8 +126,8 @@
   </div>
 
   {#if showPassphraseForm}
-    <div class="border-t border-gray-100 bg-gray-50 px-4 py-3">
-      <label for="passphrase-{volume.name}" class="block text-sm font-medium text-gray-700 mb-1">
+    <div class="border-t border-slate-700/50 bg-slate-800/50 px-4 py-3">
+      <label for="passphrase-{volume.name}" class="block text-sm font-medium text-slate-300 mb-1">
         {hasPassphrase ? 'Change Passphrase' : 'Set Passphrase'}
       </label>
       <div class="flex gap-2">
@@ -136,30 +136,30 @@
           type="password"
           bind:value={passphraseInput}
           placeholder="Enter passphrase"
-          class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="flex-1 border border-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
           onclick={handleSetPassphrase}
           disabled={passphraseLoading || !passphraseInput.trim()}
-          class="px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {passphraseLoading ? 'Saving...' : 'Save'}
         </button>
         <button
           onclick={cancelPassphrase}
-          class="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-white transition-colors"
+          class="px-3 py-1.5 text-sm text-slate-300 border border-slate-600 rounded-lg hover:bg-slate-900 transition-all duration-200 active:scale-[0.98]"
         >
           Cancel
         </button>
       </div>
       {#if passphraseError}
-        <div class="mt-2 text-sm text-red-600">{passphraseError}</div>
+        <div class="mt-2 text-sm text-red-400">{passphraseError}</div>
       {/if}
     </div>
   {/if}
 
   {#if expanded}
-    <div class="border-t border-gray-200 px-4 py-2">
+    <div class="border-t border-slate-700/50 px-4 py-2">
       <BackupList
         {projectId}
         volumeName={volume.name}

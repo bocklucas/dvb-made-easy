@@ -46,6 +46,7 @@ type Project struct {
 	Name              string                `json:"name"`
 	Source            string                `json:"source,omitempty"`
 	DeploymentMode    string                `json:"deployment_mode,omitempty"`
+	SwarmName         string                `json:"swarm_name,omitempty"`
 	ComposeContent    string                `json:"compose_content"`
 	ComposeHash       string                `json:"compose_hash"`
 	AddedAt           time.Time             `json:"added_at"`
@@ -207,6 +208,26 @@ func (m *Manifest) SetProjectName(id, name string) bool {
 		}
 	}
 	return false
+}
+
+func (m *Manifest) SetProjectSwarmName(id, swarmName string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i, p := range m.Projects {
+		if p.ID == id {
+			m.Projects[i].SwarmName = swarmName
+			return true
+		}
+	}
+	return false
+}
+
+func (p Project) StackName() string {
+	if p.SwarmName != "" {
+		return p.SwarmName
+	}
+	return p.Name
 }
 
 func (m *Manifest) SetProjectDeploymentMode(id, mode string) bool {
@@ -420,6 +441,34 @@ func (m *Manifest) RemoveSavedBackend(id string) bool {
 	for i, b := range m.SavedBackends {
 		if b.ID == id {
 			m.SavedBackends = append(m.SavedBackends[:i], m.SavedBackends[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Manifest) UpdateSavedSource(id string, s SavedSource) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i, existing := range m.SavedSources {
+		if existing.ID == id {
+			s.ID = id
+			m.SavedSources[i] = s
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Manifest) UpdateSavedBackend(id string, b SavedBackend) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i, existing := range m.SavedBackends {
+		if existing.ID == id {
+			b.ID = id
+			m.SavedBackends[i] = b
 			return true
 		}
 	}

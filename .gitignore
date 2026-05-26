@@ -7,6 +7,10 @@ server
 # Environment
 .env
 
+# Local development directories
+config-dev/
+staging-dev/
+
 # Documentation (generated)
 docs/
 
@@ -20,4 +24,9 @@ tmp/
 .svelte-kit/
 web/build/
 
+# Embedded Svelte build files (except .gitkeep)
+/internal/api/build/*
+!/internal/api/build/.gitkeep
+
 TODO.md
+*.log

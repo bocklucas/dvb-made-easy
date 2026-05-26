@@ -51,33 +51,7 @@ func (s *Server) handleImportCompose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patternMap := make(map[string]string)
-	for _, job := range result.BackupJobs {
-		patternMap[job.SourceVolume] = job.FilenameFormat
-	}
-
-	seen := make(map[string]bool)
-	var volumes []config.Volume
-	var volResponses []volumeResponse
-	for _, v := range result.Volumes {
-		if seen[v.Name] {
-			continue
-		}
-		seen[v.Name] = true
-		vol := config.Volume{
-			Name:             v.Name,
-			ComposeService:   v.Service,
-			ComposeMountPath: v.MountPath,
-			BackupPattern:    patternMap[v.Name],
-		}
-		volumes = append(volumes, vol)
-		volResponses = append(volResponses, volumeResponse{
-			Name:             v.Name,
-			ComposeService:   v.Service,
-			ComposeMountPath: v.MountPath,
-			BackupPattern:    vol.BackupPattern,
-		})
-	}
+	volumes, volResponses := parseComposeVolumes(result)
 
 	project := config.Project{
 		ComposeContent: req.ComposeContent,
@@ -150,12 +124,7 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 
 func sanitizeProject(p config.Project) config.Project {
 	if p.Credentials != nil {
-		safe := *p.Credentials
-		if safe.SMB != nil {
-			smbCopy := *safe.SMB
-			smbCopy.Password = ""
-			safe.SMB = &smbCopy
-		}
+		safe := p.Credentials.Sanitize()
 		p.Credentials = &safe
 	}
 	if p.GitSource != nil {
@@ -170,6 +139,44 @@ func sanitizeProject(p config.Project) config.Project {
 		p.PortainerSource = &safe
 	}
 	return p
+}
+
+type updateProjectRequest struct {
+	Name           string  `json:"name"`
+	DeploymentMode string  `json:"deployment_mode"`
+	SwarmName      *string `json:"swarm_name"`
+}
+
+func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var req updateProjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+
+	_, ok := s.manifest.GetProject(id)
+	if !ok {
+		http.Error(w, `{"error":"project not found"}`, http.StatusNotFound)
+		return
+	}
+
+	if req.Name != "" {
+		s.manifest.SetProjectName(id, req.Name)
+	}
+	if req.DeploymentMode != "" {
+		s.manifest.SetProjectDeploymentMode(id, req.DeploymentMode)
+	}
+	if req.SwarmName != nil {
+		s.manifest.SetProjectSwarmName(id, *req.SwarmName)
+	}
+	s.persistConfig()
+
+	project, _ := s.manifest.GetProject(id)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sanitizeProject(project))
 }
 
 func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {

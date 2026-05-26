@@ -4,6 +4,8 @@ import type {
   ComposeRestoreRequest,
   CredentialResponse,
   Credentials,
+  GitBrowseRequest,
+  GitBrowseResponse,
   GitImportRequest,
   GitSource,
   GitSyncResponse,
@@ -17,7 +19,8 @@ import type {
   RestoreResponse,
   SavedBackend,
   SavedSource,
-  TimestampGroup
+  TimestampGroup,
+  VolumeInfo
 } from './types';
 
 export class ApiError extends Error {
@@ -82,15 +85,16 @@ async function apiPut<T>(path: string, body: unknown): Promise<T> {
 
 // Portainer
 
-export function portainerConnect(url: string, apiKey: string): Promise<PortainerConnectResponse> {
-  return apiPost<PortainerConnectResponse>('/api/portainer/connect', { url, api_key: apiKey });
+export function portainerConnect(url: string, apiKey: string, savedSourceId?: string): Promise<PortainerConnectResponse> {
+  return apiPost<PortainerConnectResponse>('/api/portainer/connect', { url, api_key: apiKey, saved_source_id: savedSourceId });
 }
 
-export function portainerStacks(url: string, apiKey: string, endpointId: number): Promise<PortainerStack[]> {
+export function portainerStacks(url: string, apiKey: string, endpointId: number, savedSourceId?: string): Promise<PortainerStack[]> {
   return apiPost<PortainerStack[]>('/api/portainer/stacks', {
     url,
     api_key: apiKey,
-    endpoint_id: endpointId
+    endpoint_id: endpointId,
+    saved_source_id: savedSourceId
   });
 }
 
@@ -100,6 +104,8 @@ export function importPortainer(req: {
   stack_id: number;
   endpoint_id: number;
   project_name: string;
+  deployment_mode?: string;
+  saved_source_id?: string;
 }): Promise<ImportResponse> {
   return apiPost<ImportResponse>('/api/projects/import-portainer', req);
 }
@@ -116,6 +122,10 @@ export function inferFromCompose(content: string): Promise<InferenceResult> {
 
 export function importGit(req: GitImportRequest): Promise<ImportResponse> {
   return apiPost<ImportResponse>('/api/projects/import-git', req);
+}
+
+export function browseGit(req: GitBrowseRequest): Promise<GitBrowseResponse> {
+  return apiPost<GitBrowseResponse>('/api/git/browse', req);
 }
 
 export function syncGit(projectId: string): Promise<GitSyncResponse> {
@@ -136,6 +146,13 @@ export function getProject(id: string): Promise<Project> {
 
 export function deleteProject(id: string): Promise<void> {
   return apiDelete(`/api/projects/${id}`);
+}
+
+export function updateProjectSettings(
+  id: string,
+  settings: { name?: string; deployment_mode?: string; swarm_name?: string }
+): Promise<Project> {
+  return apiPut<Project>(`/api/projects/${id}`, settings);
 }
 
 export function updateCompose(projectId: string, composeContent: string): Promise<ComposeDiff> {
@@ -224,6 +241,10 @@ export function startComposeRestore(
   return apiPost<RestoreResponse>(`/api/projects/${projectId}/compose-restore`, req);
 }
 
+export function checkVolumesExist(projectId: string, names: string[]): Promise<Record<string, boolean>> {
+  return apiGet<Record<string, boolean>>(`/api/projects/${projectId}/volumes/check-exists?names=${encodeURIComponent(names.join(','))}`);
+}
+
 export function subscribeRestore(
   token: string,
   onEvent: (event: import('./types').ProgressEvent) => void,
@@ -254,6 +275,10 @@ export function listSavedSources(): Promise<SavedSource[]> {
   return apiGet<SavedSource[]>('/api/sources');
 }
 
+export function getSavedSource(id: string): Promise<SavedSource> {
+  return apiGet<SavedSource>(`/api/sources/${id}`);
+}
+
 export function createSavedSource(source: {
   name: string;
   type: string;
@@ -261,6 +286,18 @@ export function createSavedSource(source: {
   portainer_config?: PortainerSource;
 }): Promise<SavedSource> {
   return apiPost<SavedSource>('/api/sources', source);
+}
+
+export function updateSavedSource(
+  id: string,
+  source: {
+    name: string;
+    type: string;
+    git_config?: GitSource;
+    portainer_config?: PortainerSource;
+  }
+): Promise<SavedSource> {
+  return apiPut<SavedSource>(`/api/sources/${id}`, source);
 }
 
 export function deleteSavedSource(id: string): Promise<void> {
@@ -273,10 +310,96 @@ export function listSavedBackends(): Promise<SavedBackend[]> {
   return apiGet<SavedBackend[]>('/api/backends');
 }
 
+export function getSavedBackend(id: string): Promise<SavedBackend> {
+  return apiGet<SavedBackend>(`/api/backends/${id}`);
+}
+
 export function createSavedBackend(backend: { name: string; credentials: Credentials }): Promise<SavedBackend> {
   return apiPost<SavedBackend>('/api/backends', backend);
 }
 
+export function updateSavedBackend(
+  id: string,
+  backend: { name: string; credentials: Credentials }
+): Promise<SavedBackend> {
+  return apiPut<SavedBackend>(`/api/backends/${id}`, backend);
+}
+
 export function deleteSavedBackend(id: string): Promise<void> {
   return apiDelete(`/api/backends/${id}`);
+}
+
+// Backup Creator
+
+export interface BCParseResponse {
+  project_name?: string;
+  volumes: VolumeInfo[];
+  services: string[];
+  cron_expression?: string;
+  gpg_passphrase?: string;
+  retention_days?: number;
+  backup_image?: string;
+  stop_services?: string[];
+  env_vars?: Record<string, string>;
+  backup_volumes?: string[];
+  smb_config?: {
+    host: string;
+    share: string;
+    path?: string;
+    username?: string;
+    password?: string;
+    port?: number;
+    use_env_vars?: boolean;
+  };
+}
+
+export function parseBCCompose(composeContent: string): Promise<BCParseResponse> {
+  return apiPost<BCParseResponse>('/api/backup-creator/parse', { compose_content: composeContent });
+}
+
+export function fetchBCGit(req: {
+  repo_url: string;
+  branch: string;
+  file_path: string;
+  auth_token?: string;
+  ssh_private_key?: string;
+  saved_source_id?: string;
+}): Promise<{ compose_content: string }> {
+  return apiPost<{ compose_content: string }>('/api/backup-creator/git-fetch', req);
+}
+
+export interface BCGenerateRequest {
+  compose_content: string;
+  service_name: string;
+  image: string;
+  cron_expression: string;
+  filename_format: string;
+  gpg_passphrase?: string;
+  retention_days?: number;
+  selected_volumes: string[];
+  stop_services: string[];
+  env_vars: Record<string, string>;
+  volumes: string[];
+  smb_config?: {
+    host: string;
+    share: string;
+    path?: string;
+    username?: string;
+    password?: string;
+    port?: number;
+    use_env_vars?: boolean;
+  };
+}
+
+export function generateBCCompose(req: BCGenerateRequest): Promise<{ compose_content: string }> {
+  return apiPost<{ compose_content: string }>('/api/backup-creator/generate', req);
+}
+
+export function fetchBCPortainer(req: {
+  portainer_url: string;
+  api_key: string;
+  stack_id: number;
+  saved_source_id?: string;
+}): Promise<{ compose_content: string }> {
+  return apiPost<{ compose_content: string }>('/api/backup-creator/portainer-fetch', req);
 }

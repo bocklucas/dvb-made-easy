@@ -20,7 +20,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *config.Manifest, string) 
 		t.Fatalf("key: %v", err)
 	}
 	m := config.NewManifest()
-	router := api.NewRouter(m, key, dir, nil)
+	router := api.NewRouter(m, key, dir, dir, nil)
 	srv := httptest.NewServer(router)
 	t.Cleanup(srv.Close)
 	return srv, m, dir
