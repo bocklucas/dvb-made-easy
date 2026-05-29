@@ -1,7 +1,7 @@
 services:
   app:
-    container_name: offen-made-easy
-    image: ghcr.io/bocklucas/offen-made-easy:latest
+    container_name: dvb-made-easy
+    image: ghcr.io/bocklucas/dvb-made-easy:latest
     ports:
       - "7331:7331"
     volumes:
@@ -17,4 +17,4 @@ services:
 volumes:
   config:
   staging:
-    name: offen-restore-staging
+    name: dvb-restore-staging

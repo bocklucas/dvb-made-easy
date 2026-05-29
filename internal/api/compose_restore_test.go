@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestComposeRestoreAccepted(t *testing.T) {

@@ -11,7 +11,9 @@
     getSavedBackend,
     createSavedBackend,
     updateSavedBackend,
-    deleteSavedBackend
+    deleteSavedBackend,
+    testSavedBackend,
+    testSavedSource
   } from '$lib/api';
   import CredentialFields from '$lib/components/CredentialFields.svelte';
 
@@ -37,6 +39,11 @@
   let sourceFormApiKey = $state('');
   let sourceFormSaving = $state(false);
   let sourceFormError = $state('');
+  let testingSourceId = $state<string | null>(null);
+  let testSourceResult = $state<{ id: string; success: boolean; message: string } | null>(null);
+  let sourceEditHasToken = $state(false);
+  let sourceEditHasSSHKey = $state(false);
+  let sourceEditHasApiKey = $state(false);
 
   // Backends state
   let backends = $state<SavedBackend[]>([]);
@@ -54,6 +61,8 @@
   });
   let backendFormSaving = $state(false);
   let backendFormError = $state('');
+  let testingBackendId = $state<string | null>(null);
+  let testBackendResult = $state<{ id: string; success: boolean; message: string } | null>(null);
 
   onMount(async () => {
     await Promise.all([loadSources(), loadBackends()]);
@@ -97,6 +106,36 @@
     sourceFormApiKey = '';
     sourceFormSaving = false;
     sourceFormError = '';
+    sourceEditHasToken = false;
+    sourceEditHasSSHKey = false;
+    sourceEditHasApiKey = false;
+  }
+
+  function populateSourceForm(source: SavedSource) {
+    sourceFormName = source.name;
+    sourceFormType = source.type;
+    if (source.git_config) {
+      sourceFormRepoUrl = source.git_config.repo_url ?? '';
+      sourceFormBranch = source.git_config.branch ?? 'main';
+      sourceEditHasToken = source.git_config.has_auth_token ?? false;
+      sourceEditHasSSHKey = source.git_config.has_ssh_key ?? false;
+      if (source.git_config.auth_token) {
+        sourceFormAuthType = 'token';
+        sourceFormAuthToken = source.git_config.auth_token;
+      } else if (source.git_config.ssh_private_key) {
+        sourceFormAuthType = 'ssh';
+        sourceFormSshKey = source.git_config.ssh_private_key;
+      } else if (source.git_config.has_auth_token) {
+        sourceFormAuthType = 'token';
+      } else if (source.git_config.has_ssh_key) {
+        sourceFormAuthType = 'ssh';
+      }
+    }
+    if (source.portainer_config) {
+      sourceFormPortainerUrl = source.portainer_config.portainer_url ?? '';
+      sourceFormApiKey = source.portainer_config.api_key ?? '';
+      sourceEditHasApiKey = source.portainer_config.has_api_key ?? false;
+    }
   }
 
   function openAddSource() {
@@ -112,42 +151,19 @@
   }
 
   async function openEditSource(id: string) {
+    if (editingSourceId === id) {
+      cancelSourceForm();
+      return;
+    }
     addingSource = false;
     editingSourceId = id;
     resetSourceForm();
     try {
       const source = await getSavedSource(id);
-      sourceFormName = source.name;
-      sourceFormType = source.type;
-      if (source.git_config) {
-        sourceFormRepoUrl = source.git_config.repo_url ?? '';
-        sourceFormBranch = source.git_config.branch ?? 'main';
-        if (source.git_config.auth_token) {
-          sourceFormAuthType = 'token';
-          sourceFormAuthToken = source.git_config.auth_token;
-        } else if (source.git_config.ssh_private_key) {
-          sourceFormAuthType = 'ssh';
-          sourceFormSshKey = source.git_config.ssh_private_key;
-        }
-      }
-      if (source.portainer_config) {
-        sourceFormPortainerUrl = source.portainer_config.portainer_url ?? '';
-        sourceFormApiKey = source.portainer_config.api_key ?? '';
-      }
+      populateSourceForm(source);
     } catch {
-      // Fall back to sanitized data
       const source = sources.find((s) => s.id === id);
-      if (source) {
-        sourceFormName = source.name;
-        sourceFormType = source.type;
-        if (source.git_config) {
-          sourceFormRepoUrl = source.git_config.repo_url ?? '';
-          sourceFormBranch = source.git_config.branch ?? 'main';
-        }
-        if (source.portainer_config) {
-          sourceFormPortainerUrl = source.portainer_config.portainer_url ?? '';
-        }
-      }
+      if (source) populateSourceForm(source);
     }
   }
 
@@ -177,7 +193,7 @@
         sourceFormError = 'Portainer URL is required';
         return null;
       }
-      if (!sourceFormApiKey.trim()) {
+      if (!sourceFormApiKey.trim() && !sourceEditHasApiKey) {
         sourceFormError = 'API key is required';
         return null;
       }
@@ -255,6 +271,10 @@
   }
 
   async function openEditBackend(id: string) {
+    if (editingBackendId === id) {
+      cancelBackendForm();
+      return;
+    }
     addingBackend = false;
     editingBackendId = id;
     resetBackendForm();
@@ -462,6 +482,32 @@
     }
   }
 
+  async function handleTestSource(id: string) {
+    testingSourceId = id;
+    testSourceResult = null;
+    try {
+      await testSavedSource(id);
+      testSourceResult = { id, success: true, message: 'Connection successful' };
+    } catch (e) {
+      testSourceResult = { id, success: false, message: e instanceof Error ? e.message : 'Connection failed' };
+    } finally {
+      testingSourceId = null;
+    }
+  }
+
+  async function handleTestBackend(id: string) {
+    testingBackendId = id;
+    testBackendResult = null;
+    try {
+      await testSavedBackend(id);
+      testBackendResult = { id, success: true, message: 'Connection successful' };
+    } catch (e) {
+      testBackendResult = { id, success: false, message: e instanceof Error ? e.message : 'Connection failed' };
+    } finally {
+      testingBackendId = null;
+    }
+  }
+
   function sourceDisplayUrl(source: SavedSource): string {
     if (source.type === 'git' && source.git_config) {
       return source.git_config.repo_url;
@@ -542,10 +588,22 @@
                   <span class="px-2 py-0.5 text-xs font-medium rounded-full {source.type === 'git' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-violet-500/10 text-violet-400 border border-violet-500/30'}">
                     {source.type === 'git' ? 'Git' : 'Portainer'}
                   </span>
+                  {#if source.has_credentials}
+                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                      Auth configured
+                    </span>
+                  {/if}
                 </div>
                 <div class="text-sm text-slate-400 truncate mt-0.5">{sourceDisplayUrl(source)}</div>
               </div>
               <div class="flex items-center gap-2 ml-4 shrink-0">
+                <button
+                  onclick={() => handleTestSource(source.id)}
+                  disabled={testingSourceId === source.id}
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors {testSourceResult?.id === source.id ? (testSourceResult.success ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10') : 'text-sky-400 border-sky-500/30 hover:bg-sky-500/10'} disabled:opacity-50"
+                >
+                  {testingSourceId === source.id ? 'Testing...' : testSourceResult?.id === source.id ? (testSourceResult.success ? 'Connected' : 'Failed') : 'Test'}
+                </button>
                 <button
                   onclick={() => openEditSource(source.id)}
                   class="px-3 py-1.5 text-xs font-medium text-slate-400 border border-slate-600 rounded-lg hover:bg-slate-700/50 transition-colors"
@@ -560,6 +618,12 @@
                 </button>
               </div>
             </div>
+
+            {#if testSourceResult?.id === source.id && !testSourceResult.success}
+              <div class="px-4 pb-3">
+                <div class="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">{testSourceResult.message}</div>
+              </div>
+            {/if}
 
             <!-- Edit form for this source -->
             {#if editingSourceId === source.id}
@@ -603,13 +667,13 @@
                   {#if sourceFormAuthType === 'token'}
                     <div>
                       <label class="block text-sm font-medium text-slate-300 mb-1">Access Token</label>
-                      <input type="password" bind:value={sourceFormAuthToken} class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="ghp_... or personal access token" />
+                      <input type="password" bind:value={sourceFormAuthToken} class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder={sourceEditHasToken ? 'Enter to change' : 'ghp_... or personal access token'} />
                     </div>
                   {/if}
                   {#if sourceFormAuthType === 'ssh'}
                     <div>
                       <label class="block text-sm font-medium text-slate-300 mb-1">SSH Private Key</label>
-                      <textarea bind:value={sourceFormSshKey} rows="5" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg font-mono text-xs text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+                      <textarea bind:value={sourceFormSshKey} rows="5" class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg font-mono text-xs text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder={sourceEditHasSSHKey ? 'Enter to change' : '-----BEGIN OPENSSH PRIVATE KEY-----'}></textarea>
                     </div>
                   {/if}
                 {:else}
@@ -619,7 +683,7 @@
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">API Key</label>
-                    <input type="password" bind:value={sourceFormApiKey} class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder="ptr_..." />
+                    <input type="password" bind:value={sourceFormApiKey} class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" placeholder={sourceEditHasApiKey ? 'Enter to change' : 'ptr_...'} />
                   </div>
                 {/if}
 
@@ -751,10 +815,22 @@
                   <span class="px-2 py-0.5 text-xs font-medium rounded-full {backend.credentials.type === 'local' ? 'bg-slate-700/50 text-slate-400 border border-slate-600' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}">
                     {backend.credentials.type.toUpperCase()}
                   </span>
+                  {#if backend.has_credentials}
+                    <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                      Credentials set
+                    </span>
+                  {/if}
                 </div>
                 <div class="text-sm text-slate-400 truncate mt-0.5 font-mono">{backendDisplayInfo(backend)}</div>
               </div>
               <div class="flex items-center gap-2 ml-4 shrink-0">
+                <button
+                  onclick={() => handleTestBackend(backend.id)}
+                  disabled={testingBackendId === backend.id}
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors {testBackendResult?.id === backend.id ? (testBackendResult.success ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10') : 'text-sky-400 border-sky-500/30 hover:bg-sky-500/10'} disabled:opacity-50"
+                >
+                  {testingBackendId === backend.id ? 'Testing...' : testBackendResult?.id === backend.id ? (testBackendResult.success ? 'Connected' : 'Failed') : 'Test'}
+                </button>
                 <button
                   onclick={() => openEditBackend(backend.id)}
                   class="px-3 py-1.5 text-xs font-medium text-slate-400 border border-slate-600 rounded-lg hover:bg-slate-700/50 transition-colors"
@@ -769,6 +845,12 @@
                 </button>
               </div>
             </div>
+
+            {#if testBackendResult?.id === backend.id && !testBackendResult.success}
+              <div class="px-4 pb-3">
+                <div class="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">{testBackendResult.message}</div>
+              </div>
+            {/if}
 
             <!-- Edit form for this backend -->
             {#if editingBackendId === backend.id}

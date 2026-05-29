@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestAzureBackend(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/gitimport"
-	"github.com/offen/restore-manager/internal/portainer"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/gitimport"
+	"github.com/bocklucas/dvb-made-easy/internal/portainer"
 )
 
 type createSavedSourceRequest struct {
@@ -172,15 +172,58 @@ func (s *Server) handleUpdateSavedSource(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(sanitizeSavedSource(updated))
 }
 
+func (s *Server) handleTestSavedSource(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	saved, ok := s.manifest.GetSavedSource(id)
+	if !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	var testErr error
+	switch saved.Type {
+	case "git":
+		if saved.GitConfig == nil {
+			jsonError(w, "no git configuration", http.StatusBadRequest)
+			return
+		}
+		testErr = gitimport.TestConnection(*saved.GitConfig)
+	case "portainer":
+		if saved.PortainerConfig == nil {
+			jsonError(w, "no portainer configuration", http.StatusBadRequest)
+			return
+		}
+		client := portainer.NewClient(saved.PortainerConfig.PortainerURL, saved.PortainerConfig.APIKey)
+		testErr = client.TestConnection(r.Context())
+	default:
+		jsonError(w, "unknown source type", http.StatusBadRequest)
+		return
+	}
+
+	if testErr != nil {
+		jsonError(w, testErr.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 func sanitizeSavedSource(src config.SavedSource) config.SavedSource {
 	if src.GitConfig != nil {
+		src.HasCredentials = src.GitConfig.AuthToken != "" || src.GitConfig.SSHPrivateKey != ""
 		safe := *src.GitConfig
+		safe.HasAuthToken = safe.AuthToken != ""
+		safe.HasSSHKey = safe.SSHPrivateKey != ""
 		safe.AuthToken = ""
 		safe.SSHPrivateKey = ""
 		src.GitConfig = &safe
 	}
 	if src.PortainerConfig != nil {
+		src.HasCredentials = src.PortainerConfig.APIKey != ""
 		safe := *src.PortainerConfig
+		safe.HasAPIKey = safe.APIKey != ""
 		safe.APIKey = ""
 		src.PortainerConfig = &safe
 	}

@@ -92,6 +92,34 @@ func (c *Credentials) Sanitize() Credentials {
 }
 
 
+func (c *Credentials) HasSecrets() bool {
+	if c == nil {
+		return false
+	}
+	if c.SMB != nil && c.SMB.Password != "" {
+		return true
+	}
+	if c.S3 != nil && c.S3.SecretKey != "" {
+		return true
+	}
+	if c.WebDAV != nil && c.WebDAV.Password != "" {
+		return true
+	}
+	if c.Azure != nil && c.Azure.ConnectionString != "" {
+		return true
+	}
+	if c.Dropbox != nil && (c.Dropbox.AccessToken != "" || c.Dropbox.AppSecret != "") {
+		return true
+	}
+	if c.GDrive != nil && c.GDrive.Credentials != "" {
+		return true
+	}
+	if c.SFTP != nil && (c.SFTP.Password != "" || c.SFTP.PrivateKey != "") {
+		return true
+	}
+	return false
+}
+
 type LocalCreds struct {
 	Path string `json:"path"`
 }
@@ -147,5 +175,6 @@ type SFTPCreds struct {
 	Password   string `json:"password"`
 	PrivateKey string `json:"private_key"`
 	RemotePath string `json:"remote_path"`
+	HostKey    string `json:"host_key,omitempty"`
 }
 

@@ -1,5 +1,5 @@
 {
-  "name": "offen-restore-manager-web",
+  "name": "dvb-made-easy-web",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -8,6 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "overrides": {
+    "cookie": "^0.7.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",

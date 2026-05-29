@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestSaveLocalCredentials(t *testing.T) {
@@ -312,7 +313,7 @@ func TestSaveCredentialsWithSavedBackendID(t *testing.T) {
 		Name: "Test Saved Local",
 		Credentials: storage.Credentials{
 			Type: "local",
-			Local: &storage.LocalCredentials{
+			Local: &storage.LocalCreds{
 				Path: dir,
 			},
 		},
@@ -321,6 +322,7 @@ func TestSaveCredentialsWithSavedBackendID(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"type":             "local",
 		"saved_backend_id": sb.ID,
+		"local":            map[string]any{"path": dir},
 	})
 
 	resp, err := http.Post(srv.URL+"/api/projects/"+p.ID+"/credentials", "application/json", bytes.NewReader(body))

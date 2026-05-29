@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/offen/restore-manager/internal/compose"
-	"github.com/offen/restore-manager/internal/restore"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 type restoreRequest struct {

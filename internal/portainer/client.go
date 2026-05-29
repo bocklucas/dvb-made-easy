@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -14,6 +15,7 @@ type PortainerSource struct {
 	StackID      int    `json:"stack_id"`
 	EndpointID   int    `json:"endpoint_id"`
 	APIKey       string `json:"api_key,omitempty"`
+	HasAPIKey    bool   `json:"has_api_key,omitempty"`
 }
 
 type Endpoint struct {
@@ -26,7 +28,7 @@ type Stack struct {
 	Name         string `json:"Name"`
 	EndpointID   int    `json:"EndpointId"`
 	Status       int    `json:"Status"`
-	IsOfenBacked bool   `json:"is_offen_backed"`
+	IsDvbBacked bool   `json:"is_dvb_backed"`
 	EndpointName string `json:"endpoint_name,omitempty"`
 }
 
@@ -48,8 +50,20 @@ func NewClient(baseURL, apiKey string) *Client {
 	}
 }
 
-func (c *Client) do(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
+func (c *Client) do(ctx context.Context, method, apiPath string, body io.Reader) (*http.Response, error) {
+	base, err := url.Parse(c.baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse base URL: %w", err)
+	}
+	ref, err := url.Parse(apiPath)
+	if err != nil {
+		return nil, fmt.Errorf("parse API path: %w", err)
+	}
+	target := base.ResolveReference(ref)
+	if target.Host != base.Host {
+		return nil, fmt.Errorf("request host %q does not match base %q", target.Host, base.Host)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, target.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +155,7 @@ func (c *Client) StartStack(ctx context.Context, stackID, endpointID int) error 
 	return nil
 }
 
-// IsOfenBacked checks if compose content references the offen backup image.
-func IsOfenBacked(composeContent string) bool {
+// IsDvbBacked checks if compose content references the dvb backup image.
+func IsDvbBacked(composeContent string) bool {
 	return strings.Contains(composeContent, "offen/docker-volume-backup")
 }

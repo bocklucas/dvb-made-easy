@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func (o *Orchestrator) runNewVolume(ctx context.Context, req RestoreRequest, backend storage.Backend) error {
@@ -50,7 +51,17 @@ func (o *Orchestrator) runNewVolume(ctx context.Context, req RestoreRequest, bac
 func (o *Orchestrator) downloadBackup(ctx context.Context, req RestoreRequest, backend storage.Backend, tmpDir string) error {
 	o.send(req.Token, "downloading", "in_progress", "Downloading backup (0%)")
 
-	tmpFile, err := os.Create(filepath.Join(tmpDir, filepath.Base(req.BackupKey)))
+	backupName := filepath.Base(req.BackupKey)
+	if backupName == "." || backupName == string(os.PathSeparator) {
+		o.sendFailed(req.Token, "invalid backup key")
+		return fmt.Errorf("invalid backup key: %s", req.BackupKey)
+	}
+	targetPath := filepath.Join(tmpDir, backupName)
+	if !strings.HasPrefix(filepath.Clean(targetPath), filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+		o.sendFailed(req.Token, "invalid backup key")
+		return fmt.Errorf("path traversal in backup key: %s", req.BackupKey)
+	}
+	tmpFile, err := os.Create(targetPath)
 	if err != nil {
 		o.sendFailed(req.Token, fmt.Sprintf("create temp file: %s", err))
 		return err

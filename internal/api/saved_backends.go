@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 type createSavedBackendRequest struct {
@@ -151,6 +151,31 @@ func (s *Server) handleDeleteSavedBackend(w http.ResponseWriter, r *http.Request
 }
 
 func sanitizeSavedBackend(b config.SavedBackend) config.SavedBackend {
+	b.HasCredentials = b.Credentials.HasSecrets()
 	b.Credentials = b.Credentials.Sanitize()
 	return b
+}
+
+func (s *Server) handleTestSavedBackend(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	saved, ok := s.manifest.GetSavedBackend(id)
+	if !ok {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	backend, err := storage.NewBackend(&saved.Credentials)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := backend.TestConnection(r.Context()); err != nil {
+		jsonError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

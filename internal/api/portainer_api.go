@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/offen/restore-manager/internal/compose"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/portainer"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/portainer"
 )
 
 type portainerConnectRequest struct {
@@ -123,11 +123,11 @@ func (s *Server) handlePortainerStacks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Annotate each stack with IsOfenBacked by fetching its compose file.
+	// Annotate each stack with IsDvbBacked by fetching its compose file.
 	for i, stack := range stacks {
 		content, err := client.GetStackFile(r.Context(), stack.ID)
 		if err == nil {
-			stacks[i].IsOfenBacked = portainer.IsOfenBacked(content)
+			stacks[i].IsDvbBacked = portainer.IsDvbBacked(content)
 		}
 		if name, ok := endpointMap[stack.EndpointID]; ok {
 			stacks[i].EndpointName = name

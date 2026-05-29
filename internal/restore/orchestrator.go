@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/offen/restore-manager/internal/sse"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 type RestoreMode string
@@ -96,7 +96,7 @@ func (o *Orchestrator) sendFailed(token, message string) {
 	o.broadcaster.Complete(token)
 }
 
-const StagingVolume = "offen-restore-staging"
+const StagingVolume = "dvb-restore-staging"
 
 func (o *Orchestrator) SetStagingDir(dir string) {
 	o.stagingDir = dir

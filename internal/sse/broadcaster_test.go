@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/offen/restore-manager/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
 )
 
 func TestBroadcasterSendsEventsToSubscribers(t *testing.T) {

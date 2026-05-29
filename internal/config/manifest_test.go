@@ -3,9 +3,9 @@ package config_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/encrypt"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/encrypt"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestSaveAndLoadRoundTrip(t *testing.T) {
@@ -62,7 +62,7 @@ func TestCredentialPersistenceRoundTrip(t *testing.T) {
 		SMB: &storage.SMBCreds{
 			Host:     "nas.local",
 			Share:    "backups",
-			Path:     "offen",
+			Path:     "dvb",
 			Username: "admin",
 			Password: "secret",
 			Port:     445,

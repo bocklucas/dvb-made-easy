@@ -1,4 +1,4 @@
-# 💾 Offen Made Easy (Offen Restore Manager)
+# 💾 DVB Made Easy (Docker Volume Backup Restore Manager)
 
 [![Go Version](https://img.shields.io/badge/Go-1.26-blue.svg?style=flat-square&logo=go)](https://golang.org)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-2-FF3E00.svg?style=flat-square&logo=svelte)](https://kit.svelte.dev)
@@ -9,10 +9,18 @@
 [![Storage: WebDAV & SFTP](https://img.shields.io/badge/Network-WebDAV%20%7C%20SFTP-orange?style=flat-square)](#)
 [![Storage: Dropbox & GDrive](https://img.shields.io/badge/SaaS-Dropbox%20%7C%20GDrive-9cf?style=flat-square)](#)
 
-**Offen Made Easy** (also known as the *Offen Restore Manager*) is a lightweight, self-hosted web application and orchestration engine designed to automate the process of restoring Docker volume backups created by the popular [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup) utility.
+**DVB Made Easy** is a lightweight, self-hosted web application and orchestration engine designed to automate the process of restoring Docker volume backups created by the popular [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup) utility.
 
 > [!NOTE]
 > This entire project was co-authored with **Claude** and **Anti-Gravity**.
+
+> [!CAUTION]
+> **CRITICAL SECURITY WARNING:**
+> This application **does not implement any built-in authentication** and requires direct access to the host's Docker socket (`/var/run/docker.sock`).
+> 
+> * **NEVER expose this application to the public internet.**
+> * Access to this application grants full control over the Docker daemon (effectively root access on the host).
+> * If external access is required, you **MUST** secure it behind a VPN or protect it using an authenticating reverse proxy (e.g., Authelia, Authentik, Cloudflare Access, or basic authentication).
 
 ---
 
@@ -36,7 +44,7 @@ To restore a volume backup manually, a developer must go through this complex, e
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Offen Made Easy** replaces this manual nightmare with a **gorgeous, single-click web GUI** that orchestrates the entire lifecycle safely, quickly, and transparently.
+**DVB Made Easy** replaces this manual nightmare with a **gorgeous, single-click web GUI** that orchestrates the entire lifecycle safely, quickly, and transparently.
 
 ---
 
@@ -45,7 +53,7 @@ To restore a volume backup manually, a developer must go through this complex, e
 *   **🔌 Flexible Project Import Methods**
     *   **Direct Paste**: Paste your `docker-compose.yml` file to get going in seconds.
     *   **Git Repository**: Import compose configurations directly from Git (supports HTTPS access tokens and SSH Private Keys). Sync changes in one click.
-    *   **Portainer Integration**: Connect to Portainer, list endpoints/stacks, auto-discover Offen-backed applications, and import them directly.
+    *   **Portainer Integration**: Connect to Portainer, list endpoints/stacks, auto-discover DVB-backed applications, and import them directly.
 *   **🛡️ Cryptographic Passphrase Persistence**
     *   Securely stores volume passphrases or project-wide default passphrases.
     *   Survives container restarts using an **AES-256-GCM encrypted local manifest storage** (`manifest.enc`).
@@ -70,19 +78,19 @@ To restore a volume backup manually, a developer must go through this complex, e
 Get up and running with a single command — no cloning required:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/bocklucas/offen-made-easy/main/docker-compose.prod.yml -o docker-compose.yml && docker compose up -d
+curl -sL https://raw.githubusercontent.com/bocklucas/dvb-made-easy/main/docker-compose.prod.yml -o docker-compose.yml && docker compose up -d
 ```
 
 Or run it directly without a compose file (requires creating the staging volume for temp downloads):
 
 ```bash
-docker volume create offen-restore-staging
+docker volume create dvb-restore-staging
 
 docker run -d -p 7331:7331 \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v offen-config:/app/config \
-  -v offen-restore-staging:/staging \
-  ghcr.io/bocklucas/offen-made-easy:latest
+  -v dvb-config:/app/config \
+  -v dvb-restore-staging:/staging \
+  ghcr.io/bocklucas/dvb-made-easy:latest
 ```
 
 Once running, open [http://localhost:7331](http://localhost:7331) in your browser.
@@ -92,10 +100,10 @@ Once running, open [http://localhost:7331](http://localhost:7331) in your browse
 > ```bash
 > docker run -d -p 7331:7331 \
 >   -v /var/run/docker.sock:/var/run/docker.sock \
->   -v offen-config:/app/config \
->   -v offen-restore-staging:/staging \
+>   -v dvb-config:/app/config \
+>   -v dvb-restore-staging:/staging \
 >   --group-add $(getent group docker | cut -d: -f3) \
->   ghcr.io/bocklucas/offen-made-easy:latest
+>   ghcr.io/bocklucas/dvb-made-easy:latest
 > ```
 
 ---
@@ -105,8 +113,8 @@ Once running, open [http://localhost:7331](http://localhost:7331) in your browse
 To build and run from source using Docker Compose:
 
 ```bash
-git clone https://github.com/bocklucas/offen-made-easy.git
-cd offen-made-easy
+git clone https://github.com/bocklucas/dvb-made-easy.git
+cd dvb-made-easy
 
 # Export your Docker group ID (optional but recommended for permissions)
 export DOCKER_GID=$(getent group docker | cut -d: -f3)
@@ -148,14 +156,15 @@ Open [http://localhost:5173](http://localhost:5173) in your browser. The Vite de
 ## 🔒 Security Model
 
 ### 1. AES-GCM Encrypted Manifest
-Offen Made Easy keeps your credentials (like SMB credentials, Git auth tokens, and GPG passphrases) secure.
+DVB Made Easy keeps your credentials (like SMB credentials, Git auth tokens, and GPG passphrases) secure.
 *   Upon the first start, a secure 32-byte key is randomly generated and saved locally as `/app/config/.key` with strict `0600` permissions.
 *   Your project settings, connections, and GPG passwords are marshaled to JSON, encrypted using **AES-256-GCM**, and saved as `manifest.enc` (also with `0600` permissions).
 *   *Make sure to back up your `.key` file alongside your config folder! Without the key, the configuration database cannot be decrypted.*
 
-### 2. Docker Socket Access
-*   The application requires access to the Docker socket `/var/run/docker.sock` to check container states and spin up extraction helper containers.
-*   Ensure that only trusted administrators have network access to port `7331` (and `5173` if running the dev server).
+### 2. Docker Socket Access & Authentication Warning
+*   The application requires access to the Docker socket `/var/run/docker.sock` to check container states and spin up extraction helper containers. Access to the Docker socket is equivalent to having root access on the host system.
+*   **No Authentication:** This application does not ship with built-in user authentication.
+*   **Network Security:** **Do not expose this application directly to the public internet.** Ensure access is strictly limited to your trusted local network, or secured via an authenticating reverse proxy (such as Authelia, Authentik, Nginx with Basic Auth) or a private VPN/Tailscale network.
 
 ---
 

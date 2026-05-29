@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/offen/restore-manager/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
 )
 
 type inferRequest struct {

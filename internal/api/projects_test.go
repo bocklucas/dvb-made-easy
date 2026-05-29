@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/api"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/encrypt"
+	"github.com/bocklucas/dvb-made-easy/internal/api"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/encrypt"
 )
 
 func setupTestServer(t *testing.T) (*httptest.Server, *config.Manifest, string) {

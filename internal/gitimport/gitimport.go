@@ -25,6 +25,8 @@ type GitSource struct {
 	LastSyncedCommit string `json:"last_synced_commit,omitempty"`
 	AuthToken        string `json:"auth_token,omitempty"`
 	SSHPrivateKey    string `json:"ssh_private_key,omitempty"`
+	HasAuthToken     bool   `json:"has_auth_token,omitempty"`
+	HasSSHKey        bool   `json:"has_ssh_key,omitempty"`
 }
 
 // ensureRepo ensures that the repository is cloned locally and updated.
@@ -186,6 +188,26 @@ func Browse(cacheDir string, source GitSource) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+// TestConnection verifies that the remote repository is reachable with the
+// configured credentials by listing remote references.
+func TestConnection(source GitSource) error {
+	auth, err := authMethod(source)
+	if err != nil {
+		return fmt.Errorf("auth: %w", err)
+	}
+
+	remote := git.NewRemote(nil, &config.RemoteConfig{
+		Name: "test",
+		URLs: []string{source.RepoURL},
+	})
+
+	_, err = remote.List(&git.ListOptions{Auth: auth})
+	if err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+	return nil
 }
 
 // CleanCache removes the cached bare repo for a given URL.

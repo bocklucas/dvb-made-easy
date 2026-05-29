@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
 )
 
 func TestTopoSortForwardOrder(t *testing.T) {

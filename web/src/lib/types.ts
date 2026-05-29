@@ -5,6 +5,7 @@ export interface PortainerSource {
   stack_id: number;
   endpoint_id: number;
   api_key?: string;
+  has_api_key?: boolean;
 }
 
 export interface PortainerEndpoint {
@@ -17,7 +18,7 @@ export interface PortainerStack {
   Name: string;
   EndpointId: number;
   Status: number;
-  is_offen_backed: boolean;
+  is_dvb_backed: boolean;
   endpoint_name?: string;
 }
 
@@ -32,6 +33,8 @@ export interface GitSource {
   last_synced_commit?: string;
   auth_token?: string;
   ssh_private_key?: string;
+  has_auth_token?: boolean;
+  has_ssh_key?: boolean;
 }
 
 export interface GitImportRequest {
@@ -157,11 +160,13 @@ export interface Credentials {
     password?: string;
     private_key?: string;
     remote_path: string;
+    host_key?: string;
   };
 }
 
 export interface CredentialResponse {
   type: 'local' | 'smb' | 's3' | 'webdav' | 'azure' | 'dropbox' | 'gdrive' | 'sftp';
+  saved_backend_id?: string;
   local?: { path: string };
   smb?: { host: string; share: string; path: string; username: string; port: number };
   s3?: { bucket: string; access_key: string; endpoint: string; region: string; storage_class: string };
@@ -266,10 +271,12 @@ export interface SavedSource {
   type: 'git' | 'portainer';
   git_config?: GitSource;
   portainer_config?: PortainerSource;
+  has_credentials?: boolean;
 }
 
 export interface SavedBackend {
   id: string;
   name: string;
   credentials: Credentials;
+  has_credentials?: boolean;
 }

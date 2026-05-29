@@ -3,7 +3,7 @@ package compose_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
 )
 
 const composeWithBackupJob = `

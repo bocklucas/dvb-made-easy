@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/offen/restore-manager/internal/compose"
-	"github.com/offen/restore-manager/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
 )
 
 type importRequest struct {

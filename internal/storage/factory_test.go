@@ -3,7 +3,7 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestNewBackendLocal(t *testing.T) {

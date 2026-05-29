@@ -6,8 +6,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/restore"
-	"github.com/offen/restore-manager/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
 )
 
 // failingBackend wraps mockBackend but fails on a specific key.

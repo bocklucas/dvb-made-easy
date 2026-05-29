@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
 )
 
 func TestGenerateBackupService(t *testing.T) {

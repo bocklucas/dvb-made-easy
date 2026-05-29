@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 )
 
 type LocalBackend struct {
@@ -56,7 +57,14 @@ func (b *LocalBackend) ListBackups(ctx context.Context, pattern *regexp.Regexp) 
 }
 
 func (b *LocalBackend) Download(ctx context.Context, key string, w io.Writer) error {
-	path := filepath.Join(b.path, filepath.Base(key))
+	name := filepath.Base(key)
+	if name == "." || name == string(os.PathSeparator) {
+		return fmt.Errorf("invalid key: %s", key)
+	}
+	path := filepath.Join(b.path, name)
+	if !strings.HasPrefix(path, filepath.Clean(b.path)+string(os.PathSeparator)) {
+		return fmt.Errorf("path traversal detected: %s", key)
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open %s: %w", key, err)
