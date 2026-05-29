@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bocklucas/dvb-made-easy/internal/sse"
 	"github.com/bocklucas/dvb-made-easy/internal/storage"
@@ -166,7 +167,12 @@ func (o *Orchestrator) composeDownloadToDir(ctx context.Context, token string, v
 		o.sendFailed(token, "invalid backup key")
 		return fmt.Errorf("invalid backup key: %s", vol.BackupKey)
 	}
-	tmpFile, err := os.Create(filepath.Join(tmpDir, backupName))
+	targetPath := filepath.Join(tmpDir, backupName)
+	if !strings.HasPrefix(filepath.Clean(targetPath), filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+		o.sendFailed(token, "invalid backup key")
+		return fmt.Errorf("path traversal in backup key: %s", vol.BackupKey)
+	}
+	tmpFile, err := os.Create(targetPath)
 	if err != nil {
 		o.sendFailed(token, fmt.Sprintf("create temp file: %s", err))
 		return err

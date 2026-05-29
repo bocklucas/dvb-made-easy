@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
@@ -55,7 +56,12 @@ func (o *Orchestrator) downloadBackup(ctx context.Context, req RestoreRequest, b
 		o.sendFailed(req.Token, "invalid backup key")
 		return fmt.Errorf("invalid backup key: %s", req.BackupKey)
 	}
-	tmpFile, err := os.Create(filepath.Join(tmpDir, backupName))
+	targetPath := filepath.Join(tmpDir, backupName)
+	if !strings.HasPrefix(filepath.Clean(targetPath), filepath.Clean(tmpDir)+string(os.PathSeparator)) {
+		o.sendFailed(req.Token, "invalid backup key")
+		return fmt.Errorf("path traversal in backup key: %s", req.BackupKey)
+	}
+	tmpFile, err := os.Create(targetPath)
 	if err != nil {
 		o.sendFailed(req.Token, fmt.Sprintf("create temp file: %s", err))
 		return err
