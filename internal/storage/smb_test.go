@@ -3,14 +3,14 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestNewSMBBackendDefaultPort(t *testing.T) {
 	backend, err := storage.NewSMBBackend(&storage.SMBCreds{
 		Host:     "nas.local",
 		Share:    "backups",
-		Path:     "offen",
+		Path:     "dvb",
 		Username: "admin",
 		Password: "secret",
 	})
@@ -27,7 +27,7 @@ func TestNewSMBBackendCustomPort(t *testing.T) {
 	backend, err := storage.NewSMBBackend(&storage.SMBCreds{
 		Host:     "nas.local",
 		Share:    "backups",
-		Path:     "offen",
+		Path:     "dvb",
 		Username: "admin",
 		Password: "secret",
 		Port:     4455,

@@ -13,7 +13,7 @@ type ParseResult struct {
 	Services             []string
 	DependsOn            map[string][]string
 	BackupJobs           []BackupJob
-	BackupServiceEnv     map[string]string // env vars from the first offen backup service found
+	BackupServiceEnv     map[string]string // env vars from the first dvb backup service found
 	BackupServiceVolumes []string          // raw volume mount strings from the backup service
 	VolumeDefs           map[string]VolumeDef
 	BackupImage          string            // image of the first backup service found
@@ -157,7 +157,7 @@ func Parse(content string) (*ParseResult, error) {
 			result.DependsOn[svcName] = svc.DependsOn.Services
 		}
 
-		isBackupService := strings.HasPrefix(svc.Image, ofenImagePrefix)
+		isBackupService := strings.HasPrefix(svc.Image, dvbImagePrefix)
 
 		if !isBackupService {
 			for _, vol := range svc.Volumes {
@@ -207,7 +207,7 @@ func Parse(content string) (*ParseResult, error) {
 	return result, nil
 }
 
-const ofenImagePrefix = "offen/docker-volume-backup"
+const dvbImagePrefix = "offen/docker-volume-backup"
 
 // findVolumeMountInServices scans all services to find where a named volume is
 // mounted. It prefers non-backup services; if none mount the volume it falls
@@ -215,7 +215,7 @@ const ofenImagePrefix = "offen/docker-volume-backup"
 func findVolumeMountInServices(volName string, services map[string]serviceDef, topLevel map[string]bool) (VolumeMapping, bool) {
 	var fallback *VolumeMapping
 	for svcName, svc := range services {
-		isBackup := strings.HasPrefix(svc.Image, ofenImagePrefix)
+		isBackup := strings.HasPrefix(svc.Image, dvbImagePrefix)
 		for _, vol := range svc.Volumes {
 			vm, ok := parseVolumeEntry(vol, svcName, topLevel)
 			if !ok || vm.Name != volName {
@@ -237,7 +237,7 @@ func findVolumeMountInServices(volName string, services map[string]serviceDef, t
 }
 
 func parseBackupJob(svcName string, svc serviceDef, topLevel map[string]bool) (BackupJob, bool) {
-	if !strings.HasPrefix(svc.Image, ofenImagePrefix) {
+	if !strings.HasPrefix(svc.Image, dvbImagePrefix) {
 		return BackupJob{}, false
 	}
 

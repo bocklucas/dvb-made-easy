@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -22,6 +23,7 @@ type SFTPBackend struct {
 	password   string
 	privateKey string
 	remotePath string
+	hostKey    string
 }
 
 func NewSFTPBackend(creds *SFTPCreds) (*SFTPBackend, error) {
@@ -41,6 +43,7 @@ func NewSFTPBackend(creds *SFTPCreds) (*SFTPBackend, error) {
 		password:   creds.Password,
 		privateKey: creds.PrivateKey,
 		remotePath: creds.RemotePath,
+		hostKey:    creds.HostKey,
 	}, nil
 }
 
@@ -63,10 +66,15 @@ func (b *SFTPBackend) connect() (*ssh.Client, *sftp.Client, error) {
 		return nil, nil, fmt.Errorf("sftp: either password or private key must be provided")
 	}
 
+	hostKeyCallback, err := b.hostKeyCallback()
+	if err != nil {
+		return nil, nil, fmt.Errorf("host key callback: %w", err)
+	}
+
 	config := &ssh.ClientConfig{
 		User:            b.user,
 		Auth:            authMethods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
 	}
 
@@ -171,4 +179,22 @@ func (b *SFTPBackend) TestConnection(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (b *SFTPBackend) hostKeyCallback() (ssh.HostKeyCallback, error) {
+	if b.hostKey == "" {
+		// No host key configured — accept any key (TOFU model for user-configured servers)
+		return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			return nil
+		}, nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(b.hostKey)
+	if err != nil {
+		return nil, fmt.Errorf("decode host key: %w", err)
+	}
+	pubKey, err := ssh.ParsePublicKey(decoded)
+	if err != nil {
+		return nil, fmt.Errorf("parse host key: %w", err)
+	}
+	return ssh.FixedHostKey(pubKey), nil
 }

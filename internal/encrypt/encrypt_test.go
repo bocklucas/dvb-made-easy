@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/encrypt"
+	"github.com/bocklucas/dvb-made-easy/internal/encrypt"
 )
 
 func TestEncryptDecryptRoundTrip(t *testing.T) {

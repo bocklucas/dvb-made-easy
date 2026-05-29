@@ -304,6 +304,10 @@ export function deleteSavedSource(id: string): Promise<void> {
   return apiDelete(`/api/sources/${id}`);
 }
 
+export function testSavedSource(id: string): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(`/api/sources/${id}/test`, {});
+}
+
 // Saved Backends
 
 export function listSavedBackends(): Promise<SavedBackend[]> {
@@ -327,6 +331,10 @@ export function updateSavedBackend(
 
 export function deleteSavedBackend(id: string): Promise<void> {
   return apiDelete(`/api/backends/${id}`);
+}
+
+export function testSavedBackend(id: string): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(`/api/backends/${id}/test`, {});
 }
 
 // Backup Creator

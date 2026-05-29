@@ -5,13 +5,13 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func (s *Server) handleSaveCredentials(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	_, ok := s.manifest.GetProject(id)
+	project, ok := s.manifest.GetProject(id)
 	if !ok {
 		http.Error(w, `{"error":"project not found"}`, http.StatusNotFound)
 		return
@@ -28,6 +28,10 @@ func (s *Server) handleSaveCredentials(w http.ResponseWriter, r *http.Request) {
 		if ok {
 			mergeCredentials(&creds, &saved.Credentials)
 		}
+	}
+
+	if project.Credentials != nil {
+		mergeCredentials(&creds, project.Credentials)
 	}
 
 	backend, err := storage.NewBackend(&creds)

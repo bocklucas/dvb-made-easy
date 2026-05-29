@@ -32,7 +32,7 @@ type GenerateOptions struct {
 	SMBConfig       *SMBVolumeConfig  `json:"smb_config,omitempty"`
 }
 
-// Generate inserts or updates the offen/docker-volume-backup sidecar service in the docker-compose YAML.
+// Generate inserts or updates the docker-volume-backup sidecar service in the docker-compose YAML.
 func Generate(composeContent string, opts GenerateOptions) (string, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(composeContent), &root); err != nil {

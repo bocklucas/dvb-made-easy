@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/offen/restore-manager/internal/sse"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 type ComposeRestoreRequest struct {
@@ -161,7 +161,12 @@ func (o *Orchestrator) composeDownloadToDir(ctx context.Context, token string, v
 		fmt.Sprintf("Downloading backup for %s (0%%)", vol.VolumeName),
 		vol.VolumeName, index+1, total)
 
-	tmpFile, err := os.Create(filepath.Join(tmpDir, filepath.Base(vol.BackupKey)))
+	backupName := filepath.Base(vol.BackupKey)
+	if backupName == "." || backupName == string(os.PathSeparator) {
+		o.sendFailed(token, "invalid backup key")
+		return fmt.Errorf("invalid backup key: %s", vol.BackupKey)
+	}
+	tmpFile, err := os.Create(filepath.Join(tmpDir, backupName))
 	if err != nil {
 		o.sendFailed(token, fmt.Sprintf("create temp file: %s", err))
 		return err

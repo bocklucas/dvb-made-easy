@@ -3,7 +3,7 @@ package compose_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
 )
 
 func TestParseExtractsNamedVolumes(t *testing.T) {
@@ -210,7 +210,7 @@ volumes:
 		t.Fatalf("config service: got %q, want %q", configJob.Service, "backup_config")
 	}
 
-	// data and config come from non-offen service; smb_backup is only in the
+	// data and config come from non-dvb service; smb_backup is only in the
 	// backup service but is still a top-level named volume so it must appear.
 	if len(result.Volumes) != 3 {
 		t.Fatalf("volumes: got %d, want 3", len(result.Volumes))

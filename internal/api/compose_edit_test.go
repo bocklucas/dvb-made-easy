@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
 )
 
 const baseCompose = `services:

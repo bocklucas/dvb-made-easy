@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/offen/restore-manager/internal/docker"
-	"github.com/offen/restore-manager/internal/sse"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/docker"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func (o *Orchestrator) runFullStack(ctx context.Context, req RestoreRequest, backend storage.Backend) error {

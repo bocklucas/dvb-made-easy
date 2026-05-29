@@ -37,6 +37,7 @@
 
   function selectType(type: Credentials['type']) {
     credentials.type = type;
+    credentials.saved_backend_id = undefined;
     error = '';
     success = false;
     selectedSavedBackendId = '';
@@ -80,14 +81,16 @@
   }
 
   function buildCreds(): Credentials | null {
+    const savedId = credentials.saved_backend_id || selectedSavedBackendId || undefined;
+
     if (credentials.type === 'local' && credentials.local) {
       if (!credentials.local.path.trim()) {
         error = 'Enter a local path';
         return null;
       }
-      return { type: 'local', local: { path: credentials.local.path.trim() } };
+      return { type: 'local', saved_backend_id: savedId, local: { path: credentials.local.path.trim() } };
     }
-    
+
     if (credentials.type === 'smb' && credentials.smb) {
       if (!credentials.smb.host.trim() || !credentials.smb.share.trim()) {
         error = 'Host and share are required';
@@ -95,6 +98,7 @@
       }
       return {
         type: 'smb',
+        saved_backend_id: savedId,
         smb: {
           host: credentials.smb.host.trim(),
           share: credentials.smb.share.trim(),
@@ -105,7 +109,7 @@
         }
       };
     }
-    
+
     if (credentials.type === 's3' && credentials.s3) {
       if (!credentials.s3.bucket.trim()) {
         error = 'Bucket name is required';
@@ -113,6 +117,7 @@
       }
       return {
         type: 's3',
+        saved_backend_id: savedId,
         s3: {
           bucket: credentials.s3.bucket.trim(),
           access_key: credentials.s3.access_key.trim(),
@@ -123,7 +128,7 @@
         }
       };
     }
-    
+
     if (credentials.type === 'webdav' && credentials.webdav) {
       if (!credentials.webdav.url.trim()) {
         error = 'WebDAV URL is required';
@@ -131,6 +136,7 @@
       }
       return {
         type: 'webdav',
+        saved_backend_id: savedId,
         webdav: {
           url: credentials.webdav.url.trim(),
           username: credentials.webdav.username.trim(),
@@ -140,7 +146,7 @@
         }
       };
     }
-    
+
     if (credentials.type === 'azure' && credentials.azure) {
       if (!credentials.azure.container.trim()) {
         error = 'Container name is required';
@@ -148,13 +154,14 @@
       }
       return {
         type: 'azure',
+        saved_backend_id: savedId,
         azure: {
           connection_string: credentials.azure.connection_string,
           container: credentials.azure.container.trim()
         }
       };
     }
-    
+
     if (credentials.type === 'dropbox' && credentials.dropbox) {
       if (!credentials.dropbox.app_key.trim()) {
         error = 'App Key is required';
@@ -162,6 +169,7 @@
       }
       return {
         type: 'dropbox',
+        saved_backend_id: savedId,
         dropbox: {
           access_token: credentials.dropbox.access_token,
           app_key: credentials.dropbox.app_key.trim(),
@@ -170,7 +178,7 @@
         }
       };
     }
-    
+
     if (credentials.type === 'gdrive' && credentials.gdrive) {
       if (!credentials.gdrive.folder_id.trim()) {
         error = 'Folder ID is required';
@@ -178,6 +186,7 @@
       }
       return {
         type: 'gdrive',
+        saved_backend_id: savedId,
         gdrive: {
           folder_id: credentials.gdrive.folder_id.trim(),
           credentials: credentials.gdrive.credentials?.trim(),
@@ -185,7 +194,7 @@
         }
       };
     }
-    
+
     if (credentials.type === 'sftp' && credentials.sftp) {
       if (!credentials.sftp.host.trim() || !credentials.sftp.user.trim()) {
         error = 'Host and user are required';
@@ -193,6 +202,7 @@
       }
       return {
         type: 'sftp',
+        saved_backend_id: savedId,
         sftp: {
           host: credentials.sftp.host.trim(),
           user: credentials.sftp.user.trim(),

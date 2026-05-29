@@ -1,11 +1,11 @@
 package api
 
 import (
-	"github.com/offen/restore-manager/internal/compose"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/gitimport"
-	"github.com/offen/restore-manager/internal/portainer"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/compose"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/gitimport"
+	"github.com/bocklucas/dvb-made-easy/internal/portainer"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 // mergeCredentials copies non-empty secret credentials from source to target

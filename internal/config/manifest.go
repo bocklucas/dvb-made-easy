@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/offen/restore-manager/internal/encrypt"
-	"github.com/offen/restore-manager/internal/gitimport"
-	"github.com/offen/restore-manager/internal/portainer"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/encrypt"
+	"github.com/bocklucas/dvb-made-easy/internal/gitimport"
+	"github.com/bocklucas/dvb-made-easy/internal/portainer"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 const manifestFileName = "manifest.enc"
@@ -28,9 +28,10 @@ type Manifest struct {
 }
 
 type SavedBackend struct {
-	ID          string              `json:"id"`
-	Name        string              `json:"name"`
-	Credentials storage.Credentials `json:"credentials"`
+	ID             string              `json:"id"`
+	Name           string              `json:"name"`
+	Credentials    storage.Credentials `json:"credentials"`
+	HasCredentials bool                `json:"has_credentials,omitempty"`
 }
 
 type SavedSource struct {
@@ -39,6 +40,7 @@ type SavedSource struct {
 	Type            string                     `json:"type"`
 	GitConfig       *gitimport.GitSource       `json:"git_config,omitempty"`
 	PortainerConfig *portainer.PortainerSource `json:"portainer_config,omitempty"`
+	HasCredentials  bool                       `json:"has_credentials,omitempty"`
 }
 
 type Project struct {

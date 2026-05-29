@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/portainer"
+	"github.com/bocklucas/dvb-made-easy/internal/portainer"
 )
 
 const testComposeContent = `services:
@@ -155,7 +155,7 @@ func TestPortainerStacks(t *testing.T) {
 		ID           int    `json:"Id"`
 		Name         string `json:"Name"`
 		EndpointID   int    `json:"EndpointId"`
-		IsOfenBacked bool   `json:"is_offen_backed"`
+		IsDvbBacked bool   `json:"is_dvb_backed"`
 		EndpointName string `json:"endpoint_name"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&stacks); err != nil {
@@ -178,14 +178,14 @@ func TestPortainerStacks(t *testing.T) {
 	if stacks[0].Name != "mystack" {
 		t.Fatalf("stack name: got %q, want %q", stacks[0].Name, "mystack")
 	}
-	if !stacks[0].IsOfenBacked {
-		t.Fatal("stack should be detected as offen-backed")
+	if !stacks[0].IsDvbBacked {
+		t.Fatal("stack should be detected as dvb-backed")
 	}
 	if stacks[1].Name != "another-stack" {
 		t.Fatalf("stack name: got %q, want %q", stacks[1].Name, "another-stack")
 	}
-	if stacks[1].IsOfenBacked {
-		t.Fatal("another-stack should NOT be detected as offen-backed")
+	if stacks[1].IsDvbBacked {
+		t.Fatal("another-stack should NOT be detected as dvb-backed")
 	}
 }
 
@@ -215,7 +215,7 @@ func TestPortainerStacksNoFilter(t *testing.T) {
 		ID           int    `json:"Id"`
 		Name         string `json:"Name"`
 		EndpointID   int    `json:"EndpointId"`
-		IsOfenBacked bool   `json:"is_offen_backed"`
+		IsDvbBacked bool   `json:"is_dvb_backed"`
 		EndpointName string `json:"endpoint_name"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&stacks); err != nil {

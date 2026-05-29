@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/offen/restore-manager/internal/docker"
+	"github.com/bocklucas/dvb-made-easy/internal/docker"
 )
 
 var safeFilenamePattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)

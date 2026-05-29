@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 )
@@ -84,7 +84,7 @@ func (c *Client) PullImageIfMissing(ctx context.Context, img string) error {
 		return nil
 	}
 
-	reader, err := c.cli.ImagePull(ctx, img, types.ImagePullOptions{})
+	reader, err := c.cli.ImagePull(ctx, img, image.PullOptions{})
 	if err != nil {
 		return fmt.Errorf("pull image %s: %w", img, err)
 	}

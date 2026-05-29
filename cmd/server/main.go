@@ -6,10 +6,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/offen/restore-manager/internal/api"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/docker"
-	"github.com/offen/restore-manager/internal/encrypt"
+	"github.com/bocklucas/dvb-made-easy/internal/api"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/docker"
+	"github.com/bocklucas/dvb-made-easy/internal/encrypt"
 )
 
 func main() {
@@ -37,6 +37,6 @@ func main() {
 	router := api.NewRouter(manifest, key, *configDir, *stagingDir, dockerClient)
 
 	addr := fmt.Sprintf(":%d", *port)
-	log.Printf("offen-restore-manager listening on %s", addr)
+	log.Printf("dvb-restore-manager listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, router))
 }

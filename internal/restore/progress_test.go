@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/offen/restore-manager/internal/restore"
-	"github.com/offen/restore-manager/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
 )
 
 func TestProgressWriterEmitsAtFivePercentIntervals(t *testing.T) {

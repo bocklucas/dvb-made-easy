@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/restore"
-	"github.com/offen/restore-manager/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
 )
 
 type Server struct {
@@ -97,12 +97,14 @@ func NewRouter(manifest *config.Manifest, key []byte, configDir string, stagingD
 	r.Get("/api/sources/{id}", s.handleGetSavedSource)
 	r.Put("/api/sources/{id}", s.handleUpdateSavedSource)
 	r.Delete("/api/sources/{id}", s.handleDeleteSavedSource)
+	r.Post("/api/sources/{id}/test", s.handleTestSavedSource)
 
 	r.Post("/api/backends", s.handleCreateSavedBackend)
 	r.Get("/api/backends", s.handleListSavedBackends)
 	r.Get("/api/backends/{id}", s.handleGetSavedBackend)
 	r.Put("/api/backends/{id}", s.handleUpdateSavedBackend)
 	r.Delete("/api/backends/{id}", s.handleDeleteSavedBackend)
+	r.Post("/api/backends/{id}/test", s.handleTestSavedBackend)
 
 	// Serve static files from embedded FS
 	subFS, err := fs.Sub(frontendFS, "build")

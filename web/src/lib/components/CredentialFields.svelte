@@ -27,7 +27,7 @@
     } else if (type === 'gdrive' && !credentials.gdrive) {
       credentials.gdrive = { folder_id: '', credentials: '', impersonate: '' };
     } else if (type === 'sftp' && !credentials.sftp) {
-      credentials.sftp = { host: '', user: '', port: 22, password: '', private_key: '', remote_path: '' };
+      credentials.sftp = { host: '', user: '', port: 22, password: '', private_key: '', remote_path: '', host_key: '' };
     }
   });
 
@@ -401,6 +401,17 @@
           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 {focusRing} transition-all"
           placeholder="/var/backups"
         />
+      </div>
+      <div class="col-span-2">
+        <label for="sftp-hostkey" class="block text-sm font-medium text-slate-300 mb-1">Host Key (optional)</label>
+        <input
+          id="sftp-hostkey"
+          type="text"
+          bind:value={credentials.sftp.host_key}
+          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 {focusRing} transition-all"
+          placeholder="Base64-encoded server public key"
+        />
+        <p class="text-xs text-slate-500 mt-1">If omitted, any host key will be accepted (TOFU).</p>
       </div>
     </div>
   {/if}

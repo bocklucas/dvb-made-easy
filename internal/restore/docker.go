@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/offen/restore-manager/internal/docker"
+	"github.com/bocklucas/dvb-made-easy/internal/docker"
 )
 
 type DockerClient interface {

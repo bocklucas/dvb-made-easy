@@ -3,13 +3,12 @@ package storage_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
 
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 func TestS3Backend(t *testing.T) {

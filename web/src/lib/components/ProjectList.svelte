@@ -21,7 +21,7 @@
 <nav class="w-64 bg-slate-900/80 backdrop-blur-xl border-r border-slate-700/50 text-white h-screen flex flex-col">
   <div class="p-4 border-b border-slate-700/50">
     <a href="/" class="block hover:opacity-80 transition-opacity">
-      <h1 class="text-lg font-semibold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">offen made easy</h1>
+      <h1 class="text-lg font-semibold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">dvb made easy</h1>
     </a>
   </div>
 

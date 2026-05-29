@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/offen/restore-manager/internal/docker"
-	"github.com/offen/restore-manager/internal/restore"
-	"github.com/offen/restore-manager/internal/sse"
-	"github.com/offen/restore-manager/internal/storage"
+	"github.com/bocklucas/dvb-made-easy/internal/docker"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/storage"
 )
 
 type mockDockerClient struct {

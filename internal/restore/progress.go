@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/offen/restore-manager/internal/sse"
+	"github.com/bocklucas/dvb-made-easy/internal/sse"
 )
 
 type ProgressWriter struct {

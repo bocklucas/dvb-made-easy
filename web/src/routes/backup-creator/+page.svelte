@@ -1139,7 +1139,7 @@
                       >
                         <option value={null}>Choose stack...</option>
                         {#each stacksList as st}
-                          <option value={st.Id}>{st.Name} {st.is_offen_backed ? '(backed up)' : ''}</option>
+                          <option value={st.Id}>{st.Name} {st.is_dvb_backed ? '(backed up)' : ''}</option>
                         {/each}
                       </select>
                     {/if}

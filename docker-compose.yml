@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: offen-made-easy
+    container_name: dvb-made-easy
     build:
       context: .
       dockerfile: Dockerfile
@@ -18,4 +18,4 @@ services:
 volumes:
   config:
   staging:
-    name: offen-restore-staging
+    name: dvb-restore-staging
