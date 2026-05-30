@@ -46,13 +46,13 @@ func TestGDriveBackend(t *testing.T) {
 						{
 							"id": "file-id-123",
 							"name": "backup-db-2026-05-25T12-00-00.tar.gz",
-							"size": 12345,
+							"size": "12345",
 							"modifiedTime": "2026-05-25T12:00:00Z"
 						},
 						{
 							"id": "file-id-456",
 							"name": "other.txt",
-							"size": 500,
+							"size": "500",
 							"modifiedTime": "2026-05-25T12:00:00Z"
 						}
 					]

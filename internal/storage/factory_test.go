@@ -124,7 +124,7 @@ func TestNewBackendAzure(t *testing.T) {
 	creds := &storage.Credentials{
 		Type: storage.BackendAzure,
 		Azure: &storage.AzureCreds{
-			ConnectionString: "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=key;BlobEndpoint=https://test.blob.core.windows.net/;",
+			ConnectionString: "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=dGVzdGtleQ==;BlobEndpoint=https://test.blob.core.windows.net/;",
 			Container:        "container",
 		},
 	}

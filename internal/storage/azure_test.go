@@ -53,7 +53,7 @@ func TestAzureBackend(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	connStr := fmt.Sprintf("DefaultEndpointsProtocol=http;AccountName=test;AccountKey=key;BlobEndpoint=%s/test;", ts.URL)
+	connStr := fmt.Sprintf("DefaultEndpointsProtocol=http;AccountName=test;AccountKey=dGVzdGtleQ==;BlobEndpoint=%s/test;", ts.URL)
 	backend, err := storage.NewAzureBackend(&storage.AzureCreds{
 		ConnectionString: connStr,
 		Container:        "test-container",

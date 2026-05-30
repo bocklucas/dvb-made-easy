@@ -65,47 +65,52 @@ func TestSFTPBackend(t *testing.T) {
 	port, _ := strconv.Atoi(portStr)
 
 	go func() {
-		conn, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-
-		sConn, chans, reqs, err := ssh.NewServerConn(conn, config)
-		if err != nil {
-			return
-		}
-		defer sConn.Close()
-
-		go ssh.DiscardRequests(reqs)
-
-		for newChan := range chans {
-			if newChan.ChannelType() != "session" {
-				newChan.Reject(ssh.UnknownChannelType, "unknown channel type")
-				continue
-			}
-
-			channel, requests, err := newChan.Accept()
+		for {
+			conn, err := listener.Accept()
 			if err != nil {
-				continue
+				return
 			}
 
-			go func(in <-chan *ssh.Request) {
-				for req := range in {
-					ok := false
-					if req.Type == "subsystem" && string(req.Payload[4:]) == "sftp" {
-						ok = true
-					}
-					req.Reply(ok, nil)
-					if ok {
-						server, err := sftp.NewServer(channel)
-						if err == nil {
-							server.Serve()
-						}
-						channel.Close()
-					}
+			go func(conn net.Conn) {
+				defer conn.Close()
+
+				sConn, chans, reqs, err := ssh.NewServerConn(conn, config)
+				if err != nil {
+					return
 				}
-			}(requests)
+				defer sConn.Close()
+
+				go ssh.DiscardRequests(reqs)
+
+				for newChan := range chans {
+					if newChan.ChannelType() != "session" {
+						newChan.Reject(ssh.UnknownChannelType, "unknown channel type")
+						continue
+					}
+
+					channel, requests, err := newChan.Accept()
+					if err != nil {
+						continue
+					}
+
+					go func(in <-chan *ssh.Request) {
+						for req := range in {
+							ok := false
+							if req.Type == "subsystem" && string(req.Payload[4:]) == "sftp" {
+								ok = true
+							}
+							req.Reply(ok, nil)
+							if ok {
+								server, err := sftp.NewServer(channel)
+								if err == nil {
+									server.Serve()
+								}
+								channel.Close()
+							}
+						}
+					}(requests)
+				}
+			}(conn)
 		}
 	}()
 
