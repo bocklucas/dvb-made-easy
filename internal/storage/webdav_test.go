@@ -13,6 +13,13 @@ import (
 
 func TestWebDAVBackend(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			w.Header().Set("DAV", "1, 2")
+			w.Header().Set("Allow", "OPTIONS, GET, HEAD, PUT, DELETE, MKCOL, PROPFIND, PROPPATCH, COPY, MOVE")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		if r.Method == "PROPFIND" {
 			w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 			w.WriteHeader(http.StatusMultiStatus)
@@ -28,7 +35,7 @@ func TestWebDAVBackend(t *testing.T) {
     </d:propstat>
   </d:response>
   <d:response>
-    <d:href>/backups/backup-db-2026-05-25T12-00-00.tar.gz</d:href>
+    <d:href>//backups/backup-db-2026-05-25T12-00-00.tar.gz</d:href>
     <d:propstat>
       <d:prop>
         <d:resourcetype/>
@@ -89,8 +96,8 @@ func TestWebDAVBackend(t *testing.T) {
 	if len(backups) != 1 {
 		t.Fatalf("expected 1 backup, got %d", len(backups))
 	}
-	if backups[0].Key != "backups/backup-db-2026-05-25T12-00-00.tar.gz" {
-		t.Errorf("expected key backups/backup-db-2026-05-25T12-00-00.tar.gz, got %s", backups[0].Key)
+	if backups[0].Key != "/backups/backup-db-2026-05-25T12-00-00.tar.gz" {
+		t.Errorf("expected key /backups/backup-db-2026-05-25T12-00-00.tar.gz, got %s", backups[0].Key)
 	}
 	if backups[0].Size != 12345 {
 		t.Errorf("expected size 12345, got %d", backups[0].Size)
@@ -98,7 +105,7 @@ func TestWebDAVBackend(t *testing.T) {
 
 	// Test download
 	var buf bytes.Buffer
-	err = backend.Download(context.Background(), "backups/backup-db-2026-05-25T12-00-00.tar.gz", &buf)
+	err = backend.Download(context.Background(), "/backups/backup-db-2026-05-25T12-00-00.tar.gz", &buf)
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
 	}
