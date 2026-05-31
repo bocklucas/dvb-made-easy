@@ -3,7 +3,6 @@
 [![CI](https://github.com/bocklucas/dvb-made-easy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bocklucas/dvb-made-easy/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/bocklucas/dvb-made-easy?style=flat-square&label=release)](https://github.com/bocklucas/dvb-made-easy/releases/latest)
 [![Docker Image](https://img.shields.io/badge/ghcr.io-dvb--made--easy%3Alatest-2496ED?style=flat-square&logo=docker)](https://ghcr.io/bocklucas/dvb-made-easy)
-[![Image Size](https://img.shields.io/docker/image-size/bocklucas/dvb-made-easy?style=flat-square&label=image%20size&logo=docker)](https://ghcr.io/bocklucas/dvb-made-easy)
 [![License: MIT](https://img.shields.io/github/license/bocklucas/dvb-made-easy?style=flat-square)](https://github.com/bocklucas/dvb-made-easy/blob/main/LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/bocklucas/dvb-made-easy?style=flat-square&logo=github)](https://github.com/bocklucas/dvb-made-easy/stargazers)
 
