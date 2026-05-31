@@ -30,3 +30,8 @@ web/build/
 
 TODO.md
 *.log
+
+# Demo tooling (ignore everything except assets)
+demo/*
+!demo/screenshots/
+!demo/gifs/

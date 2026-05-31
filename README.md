@@ -1,4 +1,11 @@
-# 💾 DVB Made Easy (Docker Volume Backup Restore Manager)
+# DVB Made Easy
+
+[![CI](https://github.com/bocklucas/dvb-made-easy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bocklucas/dvb-made-easy/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/bocklucas/dvb-made-easy?style=flat-square&label=release)](https://github.com/bocklucas/dvb-made-easy/releases/latest)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-dvb--made--easy%3Alatest-2496ED?style=flat-square&logo=docker)](https://ghcr.io/bocklucas/dvb-made-easy)
+[![Image Size](https://img.shields.io/docker/image-size/bocklucas/dvb-made-easy?style=flat-square&label=image%20size&logo=docker)](https://ghcr.io/bocklucas/dvb-made-easy)
+[![License: MIT](https://img.shields.io/github/license/bocklucas/dvb-made-easy?style=flat-square)](https://github.com/bocklucas/dvb-made-easy/blob/main/LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/bocklucas/dvb-made-easy?style=flat-square&logo=github)](https://github.com/bocklucas/dvb-made-easy/stargazers)
 
 [![Go Version](https://img.shields.io/badge/Go-1.26-blue.svg?style=flat-square&logo=go)](https://golang.org)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-2-FF3E00.svg?style=flat-square&logo=svelte)](https://kit.svelte.dev)
@@ -9,79 +16,104 @@
 [![Storage: WebDAV & SFTP](https://img.shields.io/badge/Network-WebDAV%20%7C%20SFTP-orange?style=flat-square)](#)
 [![Storage: Dropbox & GDrive](https://img.shields.io/badge/SaaS-Dropbox%20%7C%20GDrive-9cf?style=flat-square)](#)
 
-**DVB Made Easy** is a lightweight, self-hosted web application and orchestration engine designed to automate the process of restoring Docker volume backups created by the popular [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup) utility.
+A lightweight, self-hosted web UI for restoring Docker volume backups created by [offen/docker-volume-backup](https://github.com/offen/docker-volume-backup).
+
+![DVB Made Easy — Full Walkthrough](demo/gifs/walkthrough.gif)
 
 > [!NOTE]
-> This entire project was co-authored with **Claude** and **Anti-Gravity**.
+> This project was co-authored with **Claude** and **Anti-Gravity**.
+
+> [!WARNING]
+> **Early-Stage Software** — Functional and used in real environments, but you may encounter rough edges. This tool interacts directly with Docker volumes and container lifecycles — **back up your data independently** before relying on it for critical restores. Test against non-production volumes first. Bug reports welcome at [Issues](https://github.com/bocklucas/dvb-made-easy/issues).
 
 > [!CAUTION]
-> **CRITICAL SECURITY WARNING:**
-> This application **does not implement any built-in authentication** and requires direct access to the host's Docker socket (`/var/run/docker.sock`).
-> 
-> * **NEVER expose this application to the public internet.**
-> * Access to this application grants full control over the Docker daemon (effectively root access on the host).
-> * If external access is required, you **MUST** secure it behind a VPN or protect it using an authenticating reverse proxy (e.g., Authelia, Authentik, Cloudflare Access, or basic authentication).
+> **No built-in authentication.** Requires direct access to the Docker socket (`/var/run/docker.sock`), which grants full control over the Docker daemon (effectively root on the host).
+> - **Never expose this application to the public internet.**
+> - Secure it behind a VPN or authenticating reverse proxy (Authelia, Authentik, Cloudflare Access, etc.).
 
 ---
 
-## 🔍 The Problem & The Pain Points
+## Table of Contents
 
-While `offen/docker-volume-backup` is an excellent tool for scheduled backups, GPG encryption, and cloud/local uploads, **it completely lacks a restore interface**. 
-
-To restore a volume backup manually, a developer must go through this complex, error-prone list of steps:
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    MANUAL RESTORE WORKFLOW (PAIN POINTS)                │
-├─────────────────────────────────────────────────────────────────────────┤
-│  1. Stop/Scale Down the consuming containers (prevent database corrupt) │
-│  2. Fetch/Download the compressed `.tar.gz` or `.tar.gz.gpg` archive     │
-│  3. Decrypt the archive manually using GPG (if encrypted)               │
-│  4. Run a temporary helper container mounting the target Docker volume   │
-│  5. Extract the archive (carefully calculating --strip-components 2)    │
-│  6. Clean up temporary extraction containers and staging files          │
-│  7. Scale Up/Restart the original container stack                       │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-**DVB Made Easy** replaces this manual nightmare with a **gorgeous, single-click web GUI** that orchestrates the entire lifecycle safely, quickly, and transparently.
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Quick Start](#quick-start)
+- [Local Development (Docker Compose)](#local-development-docker-compose)
+- [Local Development (No Docker)](#local-development-no-docker)
+- [Security Model](#security-model)
+- [FAQ & Troubleshooting](#faq--troubleshooting)
 
 ---
 
-## ✨ Features
+## Features
 
-*   **🔌 Flexible Project Import Methods**
-    *   **Direct Paste**: Paste your `docker-compose.yml` file to get going in seconds.
-    *   **Git Repository**: Import compose configurations directly from Git (supports HTTPS access tokens and SSH Private Keys). Sync changes in one click.
-    *   **Portainer Integration**: Connect to Portainer, list endpoints/stacks, auto-discover DVB-backed applications, and import them directly.
-*   **🛡️ Cryptographic Passphrase Persistence**
-    *   Securely stores volume passphrases or project-wide default passphrases.
-    *   Survives container restarts using an **AES-256-GCM encrypted local manifest storage** (`manifest.enc`).
-*   **⚡ Automated Volume Restore**
-    *   Create a new volume (e.g. `{volume}_restored_{timestamp}`) and extract the backup directly into it. Extremely safe for inspecting data before replacing production volumes.
-*   **🐳 Native Docker Swarm & Compose Support**
-    *   Orchestrates scaling down of Docker Swarm services (or stopping Compose containers) to safely perform restores without database corruption.
-    *   Cleans and prepares target volumes, performs the restore, and automatically restores/scales up services to their previous configuration when done.
-*   **📡 Real-Time Progress Streaming**
-    *   Leverages Server-Sent Events (SSE) to broadcast live percentages, logs, container transitions, and extraction status.
-*   **💾 Reusable Source & Storage Backends**
-    *   Configure Git repositories or Portainer credentials once and reuse them.
-    *   Supports a wide array of storage backends: **Local Directory**, **SMB/CIFS**, **AWS S3 / MinIO**, **WebDAV (Nextcloud)**, **SFTP**, **Azure Blob Storage**, **Dropbox**, and **Google Drive**.
-*   **🛠️ Sidecar Backup Generator (Configuration Wizard)**
-    *   Easily generate and inject the `offen/docker-volume-backup` sidecar service definition into your existing `docker-compose.yml` file.
-    *   Configure schedule (cron), retention policies, GPG encryption passphrases, service downtime orchestration (labels to stop containers during backups), and automatic SMB volume mounting.
+- **Flexible Project Import** — Paste a `docker-compose.yml`, import from a Git repository (HTTPS tokens / SSH keys), or connect to Portainer to auto-discover stacks.
+- **Encrypted Passphrase Storage** — Volume and project-wide GPG passphrases are persisted in an AES-256-GCM encrypted manifest that survives container restarts.
+- **Automated Volume Restore** — Restore into the original volume or create a new one (e.g. `{volume}_restored_{timestamp}`) for safe inspection before replacing production data.
+- **Swarm & Compose Orchestration** — Scales down Swarm services or stops Compose containers before restoring, then brings everything back up automatically.
+- **Real-Time Progress** — Server-Sent Events stream live percentages, logs, and container state transitions to the UI.
+- **Multi-Backend Storage** — Local directory, SMB/CIFS, AWS S3 / MinIO, WebDAV (Nextcloud), SFTP, Azure Blob, Dropbox, and Google Drive.
+- **Sidecar Backup Generator** — A configuration wizard that generates and injects the `offen/docker-volume-backup` sidecar service into your compose file, with schedule, retention, encryption, and storage settings.
 
 ---
 
-## 🚀 Quick Start
+## Screenshots
 
-Get up and running with a single command — no cloning required:
+<details>
+<summary><strong>Dashboard</strong> — All your projects at a glance</summary>
+
+![Dashboard](demo/screenshots/01-dashboard.png)
+
+</details>
+
+<details>
+<summary><strong>Project Detail</strong> — Volumes, passphrases, and storage configuration</summary>
+
+![Project Detail](demo/screenshots/02-project-detail.png)
+
+</details>
+
+<details>
+<summary><strong>Browse Backups</strong> — List available backups per volume with one-click restore</summary>
+
+![Browse Backups](demo/screenshots/03-browse-backups.png)
+
+</details>
+
+<details>
+<summary><strong>Setup Wizard</strong> — Choose your import method (Paste, Git, or Portainer)</summary>
+
+![Setup Method](demo/screenshots/04-setup-method.png)
+![Paste Compose](demo/screenshots/05-setup-paste.png)
+![Auto-Detected Storage](demo/screenshots/06-setup-storage.png)
+
+</details>
+
+<details>
+<summary><strong>Restore Progress</strong> — Real-time streaming of every step</summary>
+
+![Restore Progress](demo/gifs/restore-progress.gif)
+
+</details>
+
+<details>
+<summary><strong>Compose Restore</strong> — Select a backup point to restore all volumes at once</summary>
+
+![Compose Restore](demo/screenshots/10-compose-restore-timestamps.png)
+
+</details>
+
+---
+
+## Quick Start
+
+Single command — no cloning required:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/bocklucas/dvb-made-easy/main/docker-compose.prod.yml -o docker-compose.yml && docker compose up -d
 ```
 
-Or run it directly without a compose file (requires creating the staging volume for temp downloads):
+Or run directly without a compose file:
 
 ```bash
 docker volume create dvb-restore-staging
@@ -93,7 +125,7 @@ docker run -d -p 7331:7331 \
   ghcr.io/bocklucas/dvb-made-easy:latest
 ```
 
-Once running, open [http://localhost:7331](http://localhost:7331) in your browser.
+Then open [http://localhost:7331](http://localhost:7331).
 
 > [!TIP]
 > If you get a "permission denied" error for the Docker socket, add your Docker group ID:
@@ -108,38 +140,30 @@ Once running, open [http://localhost:7331](http://localhost:7331) in your browse
 
 ---
 
-## 🛠️ Local Development (Docker Compose)
-
-To build and run from source using Docker Compose:
+## Local Development (Docker Compose)
 
 ```bash
 git clone https://github.com/bocklucas/dvb-made-easy.git
 cd dvb-made-easy
 
-# Export your Docker group ID (optional but recommended for permissions)
 export DOCKER_GID=$(getent group docker | cut -d: -f3)
-
 docker compose up -d
 ```
 
-Once the stack is running, navigate to:
-*   **Web Console (GUI)**: [http://localhost:7331](http://localhost:7331)
-*   **API Documentation / Health**: [http://localhost:7331/api/health](http://localhost:7331/api/health)
+- **Web UI**: [http://localhost:7331](http://localhost:7331)
+- **API Health**: [http://localhost:7331/api/health](http://localhost:7331/api/health)
 
 ---
 
-## 🧑‍💻 Local Development (No Docker)
-
-If you wish to run the backend and frontend services locally outside of Docker containers:
+## Local Development (No Docker)
 
 ### Prerequisites
-*   Go (version 1.26 or newer)
-*   Node.js (version 22 or newer)
-*   Access to a local Docker daemon (via `/var/run/docker.sock`)
+- Go 1.26+
+- Node.js 22+
+- Access to a local Docker daemon (`/var/run/docker.sock`)
 
 ### 1. Start the Go Backend
 ```bash
-# Set custom folders for the encrypted database and local staging
 go run cmd/server/main.go --port 7331 --config-dir ./config-dev --staging-dir ./staging-dev
 ```
 
@@ -149,37 +173,31 @@ cd web
 npm install
 npm run dev
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser. The Vite development proxy will forward `/api` requests to the Go backend on port `7331`.
+
+Open [http://localhost:5173](http://localhost:5173) — the Vite dev proxy forwards `/api` requests to the Go backend on port 7331.
 
 ---
 
-## 🔒 Security Model
+## Security Model
 
-### 1. AES-GCM Encrypted Manifest
-DVB Made Easy keeps your credentials (like SMB credentials, Git auth tokens, and GPG passphrases) secure.
-*   Upon the first start, a secure 32-byte key is randomly generated and saved locally as `/app/config/.key` with strict `0600` permissions.
-*   Your project settings, connections, and GPG passwords are marshaled to JSON, encrypted using **AES-256-GCM**, and saved as `manifest.enc` (also with `0600` permissions).
-*   *Make sure to back up your `.key` file alongside your config folder! Without the key, the configuration database cannot be decrypted.*
+### Encrypted Manifest
+- A 32-byte key is generated on first start and saved as `/app/config/.key` (mode `0600`).
+- All credentials (SMB, Git tokens, GPG passphrases) are encrypted with **AES-256-GCM** and stored in `manifest.enc`.
+- **Back up your `.key` file** — without it, the manifest cannot be decrypted.
 
-### 2. Docker Socket Access & Authentication Warning
-*   The application requires access to the Docker socket `/var/run/docker.sock` to check container states and spin up extraction helper containers. Access to the Docker socket is equivalent to having root access on the host system.
-*   **No Authentication:** This application does not ship with built-in user authentication.
-*   **Network Security:** **Do not expose this application directly to the public internet.** Ensure access is strictly limited to your trusted local network, or secured via an authenticating reverse proxy (such as Authelia, Authentik, Nginx with Basic Auth) or a private VPN/Tailscale network.
+### Docker Socket Access
+- The app needs `/var/run/docker.sock` to inspect containers and run extraction helpers. Docker socket access is equivalent to root on the host.
+- **No built-in authentication** — restrict access to a trusted local network, VPN, or authenticating reverse proxy.
 
 ---
 
-## ❔ FAQ & Troubleshooting
+## FAQ & Troubleshooting
 
-#### 1. "permission denied" when connecting to `/var/run/docker.sock`
-This occurs if the Docker socket mount has different permissions. Ensure that:
-*   You set the `DOCKER_GID` environment variable before running `docker compose up`.
-*   The user executing the container is added to the correct group, or run the container as `root` (not recommended).
+**"permission denied" on `/var/run/docker.sock`**
+Set the `DOCKER_GID` environment variable before running `docker compose up`, or add `--group-add` when using `docker run`.
 
-#### 2. How do I restore into a different volume name?
-During the restore flow in the UI, select **New Volume Mode**. It will prompt you for a target volume name, defaulting to `{volume_name}_restored_{timestamp}`. You can customize this to whatever name you want, and the app will create and populate it.
+**How do I restore into a different volume name?**
+Select **New Volume Mode** during the restore flow. It defaults to `{volume_name}_restored_{timestamp}` but can be customized to any name.
 
-#### 3. My backups are GPG-encrypted. How does decryption work?
-When importing your volume or setting up the restore, the UI will display a lock icon if it detects `.gpg` files. You can:
-1. Store the GPG passphrase in the UI so that it is encrypted and saved in `manifest.enc`.
-2. Enter the passphrase dynamically at the time of restore.
-During restore, the background Alpine helper container automatically installs `gnupg` and decrypts the stream before piping it to `tar`.
+**How does GPG decryption work?**
+The UI shows a lock icon when it detects `.gpg` files. You can store the passphrase in the encrypted manifest or enter it at restore time. The helper container handles decryption automatically.
